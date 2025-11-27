@@ -1,0 +1,25 @@
+# Arquivos de Sistema Operacional (Windows, macOS)
+.DS_Store
+Thumbs.db
+
+# Ambiente Virtual Python
+# Esta pasta contém todas as bibliotecas instaladas (dependências).
+# Ela não deve ser versionada, pois o 'requirements.txt' cuida disso.
+venv/
+env/
+*.pyc
+
+# Arquivos de Logs e Debug
+*.log
+__pycache__/
+
+# Arquivos de Banco de Dados
+# O banco de dados SQLite contém dados gerados em desenvolvimento/produção.
+# Deve ser ignorado para evitar conflitos de merge e vazamento de dados.
+# Sua aplicação cria este arquivo no 'instance/'
+instance/agendamentos.db
+
+# Arquivos de Configuração Sensível
+# Se você tiver um arquivo de configuração de produção ou de segredos.
+# Exemplo: Se você usar 'instance/config.py'
+instance/config.py

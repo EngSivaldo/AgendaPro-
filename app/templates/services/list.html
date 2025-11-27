@@ -1,0 +1,37 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="mt-4">Gerenciamento de Serviços</h1>
+<p><a href="{{ url_for('services.create_service') }}" class="btn btn-primary">Adicionar Novo Serviço</a></p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Nome</th>
+            <th>Preço</th>
+            <th>Duração (min)</th>
+            <th>Descrição</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for service in services %}
+        <tr>
+            <td>{{ service.nome }}</td>
+            <td>R$ {{ "%.2f"|format(service.preco) }}</td>
+            <td>{{ service.duracao_minutos }}</td>
+            <td>{{ service.descricao or 'N/A' }}</td>
+            <td>
+                <a href="#" class="btn btn-sm btn-warning">Editar</a>
+                <a href="#" class="btn btn-sm btn-danger">Excluir</a>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="5">Nenhum serviço cadastrado ainda.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

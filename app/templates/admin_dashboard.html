@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-5 fw-bold text-danger">
+            <i class="fas fa-shield-alt me-2"></i> Painel de Administração
+        </h1>
+        <p class="lead text-muted">
+            Gerencie serviços, visualize agendamentos de todos os usuários e acesse estatísticas do sistema.
+        </p>
+    </div>
+</div>
+
+<hr>
+
+<div class="row mt-4">
+
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-calendar-check fa-4x text-success mb-3"></i>
+                <h5 class="card-title fw-bold">Gerenciar Agendamentos</h5>
+                <p class="card-text text-muted">
+                    Visualize, aprove, cancele ou reagende todos os compromissos do sistema.
+                </p>
+                <a href="{{ url_for('services.manage_appointments') }}" class="btn btn-success mt-2">
+                    <i class="fas fa-list-ul me-1"></i> Ver Todos
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-tags fa-4x text-warning mb-3"></i>
+                <h5 class="card-title fw-bold">Gerenciar Serviços</h5>
+                <p class="card-text text-muted">
+                    Adicione, edite ou remova os serviços disponíveis para agendamento.
+                </p>
+                <a href="{{ url_for('services.list_services') }}" class="btn btn-warning text-dark mt-2">
+                    <i class="fas fa-tools me-1"></i> Configurar Serviços
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-users-cog fa-4x text-primary mb-3"></i>
+                <h5 class="card-title fw-bold">Gerenciar Usuários</h5>
+                <p class="card-text text-muted">
+                    Visualize e gerencie as permissões e cadastros dos usuários (clientes e admins).
+                </p>
+                <a href="{{ url_for('auth.manage_users') }}" class="btn btn-primary mt-2"> 
+                    <i class="fas fa-user-friends me-1"></i> Ver Usuários
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow-sm p-4">
+            <h4 class="text-secondary"><i class="fas fa-chart-line me-2"></i> Resumo Rápido</h4>
+            <p>Aqui você pode inserir gráficos, contagem de agendamentos pendentes ou outras métricas importantes.</p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

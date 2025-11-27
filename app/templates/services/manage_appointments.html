@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="mt-4">📋 Gerenciar Agendamentos</h1>
+<p class="mb-4">Visualização de todos os agendamentos do sistema.</p>
+
+{% if appointments %}
+<div class="row">
+    {% for appointment in appointments %}
+    <div class="col-md-6 mb-4">
+        <div class="card {% if appointment.status == 'Cancelado' %}border-secondary{% elif appointment.data_horario < now() %}border-warning{% else %}border-success{% endif %}">
+            <div class="card-header bg-light">
+                **Agendamento #{{ appointment.id }}**
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ appointment.servico.nome }}</h5>
+                <p class="card-text">
+                    **Cliente:** **{{ appointment.user.nome }}** (ID: {{ appointment.user.id }})<br>
+                    **Data/Hora:** {{ appointment.data_horario.strftime('%d/%m/%Y às %H:%M') }}<br>
+                    **Duração:** {{ appointment.servico.duracao_minutos }} minutos<br>
+                    **Preço:** R$ {{ "%.2f"|format(appointment.servico.preco) }}<br>
+                    **Status:** {% if appointment.status == 'Agendado' %}
+                    {% if appointment.data_horario < now() %}
+                    <span class="badge bg-secondary">Concluído</span>
+                    {% else %}
+                        <span class="badge bg-success">Agendado</span>
+                    {% endif %}
+                    {% else %}
+                        <span class="badge bg-secondary">Cancelado</span>
+                    {% endif %}
+                </p>
+
+                {% if appointment.status == 'Agendado' and appointment.data_horario > now() %}
+                <form method="POST" action="{{ url_for('services.cancel_appointment', appointment_id=appointment.id) }}" 
+                      style="display:inline;"
+                      onsubmit="return confirm('ATENÇÃO ADMIN: Cancelar o agendamento de {{ appointment.user.nome }}?');">
+                    <button type="submit" class="btn btn-danger btn-sm">Cancelar Agendamento</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    Ainda não há agendamentos registrados no sistema.
+</div>
+{% endif %}
+{% endblock %}

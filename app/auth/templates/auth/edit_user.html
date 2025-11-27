@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            
+            <a href="{{ url_for('auth.manage_users') }}" class="btn btn-secondary btn-sm mb-3">
+                <i class="fas fa-arrow-left me-1"></i> Voltar para Gerenciamento
+            </a>
+
+            <h1 class="display-6 fw-bold text-info mb-4">
+                <i class="fas fa-edit me-2"></i> Editar Usuário: {{ user.nome }}
+            </h1>
+
+            <div class="card shadow">
+                <div class="card-body">
+                    
+                    <form method="POST" action="{{ url_for('auth.edit_user', user_id=user.id) }}">
+                        
+                        {# Campo Nome #}
+                        <div class="mb-3">
+                            <label for="nome" class="form-label">Nome Completo</label>
+                            <input type="text" class="form-control" id="nome" name="nome" 
+                                   value="{{ user.nome }}" required>
+                        </div>
+
+                        {# Campo Email #}
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   value="{{ user.email }}" required>
+                        </div>
+
+                        {# Campo para Alterar Senha #}
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Nova Senha (Deixe em branco para não alterar)</label>
+                            <input type="password" class="form-control" id="password" name="password" 
+                                   placeholder="Digite a nova senha">
+                            <small class="form-text text-muted">A senha atual será mantida se este campo for deixado vazio.</small>
+                        </div>
+                        
+                        <hr class="mt-4 mb-4">
+
+                        {# Campo Permissão de Administrador #}
+                        <div class="form-check mb-4">
+                            {# Verifica se o campo 'is_admin' do usuário é True e marca o checkbox #}
+                            <input class="form-check-input" type="checkbox" id="is_admin" name="is_admin" 
+                                   value="True" {% if user.is_admin %} checked {% endif %}>
+                            <label class="form-check-label fw-bold" for="is_admin">
+                                Tornar Administrador (Admin)
+                            </label>
+                            <p class="form-text text-danger">
+                                Use com cautela! Define permissões totais de acesso.
+                            </p>
+                        </div>
+
+                        {# Botões de Ação #}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-info btn-lg text-white">
+                                <i class="fas fa-save me-1"></i> Salvar Alterações
+                            </button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+{% endblock %}

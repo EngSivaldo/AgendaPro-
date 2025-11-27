@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<header class="p-5 mb-4 bg-light rounded-3 shadow-sm text-center">
+    <div class="container-fluid py-5">
+        <h1 class="display-4 fw-bold text-primary">
+            Agendamento Rápido e Inteligente 🚀
+        </h1>
+        <p class="fs-5 text-muted">
+            Sua plataforma para marcar serviços com facilidade, a qualquer hora e em qualquer lugar.
+        </p>
+        
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('services.book_appointment') }}" class="btn btn-primary btn-lg mt-3 shadow-sm">
+                Agendar Novo Serviço Agora!
+            </a>
+            
+        {% else %}
+            <div class="mt-4">
+                <p class="lead mb-3">Pronto para começar? Acesse sua conta ou crie uma nova:</p>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-success btn-lg me-3 shadow-sm">
+                    Acessar Minha Conta (Login)
+                </a>
+                <a href="{{ url_for('auth.register') }}" class="btn btn-outline-success btn-lg shadow-sm">
+                    Criar Conta (Registro)
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</header>
+
+<hr class="my-5">
+
+<section class="row text-center mb-5">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="card-title text-success">
+                    <i class="fas fa-calendar-check me-2"></i> 24/7 Disponível
+                </h3>
+                <p class="card-text text-muted">
+                    Marque seu horário em qualquer momento do dia, sem depender de atendimento telefônico.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="card-title text-info">
+                    <i class="fas fa-user-clock me-2"></i> Histórico Completo
+                </h3>
+                <p class="card-text text-muted">
+                    Visualize e gerencie todos os seus agendamentos passados e futuros em um único painel.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h3 class="card-title text-warning">
+                    <i class="fas fa-lock me-2"></i> Segurança de Dados
+                </h3>
+                <p class="card-text text-muted">
+                    Seus dados pessoais e históricos de agendamento são protegidos com criptografia.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% block scripts %}
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script> 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+{% endblock %}
+
+{% endblock %}

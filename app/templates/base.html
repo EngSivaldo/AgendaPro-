@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Agendamento | {{ title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <style>
+        /* Estilos Globais e Reset Visual */
+        :root {
+            --primary-color: #007bff; /* Azul Padrão */
+            --dark-bg: #212529; /* Fundo Escuro da Navbar/Rodapé */
+            --text-light: #f8f9fa;
+        }
+        body {
+            background-color: #f4f7f6; /* Fundo Suave e Claro */
+            padding-top: 70px; /* Espaço para a navbar fixa */
+        }
+        .navbar-dark .navbar-brand {
+            font-weight: 700; /* Bold */
+            letter-spacing: 0.5px;
+        }
+        /* Sombra na Navbar para Profissionalismo */
+        .navbar-shadow {
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        /* Destaque para Flash Messages */
+        .alert {
+            margin-top: 1rem;
+            border-radius: 0.5rem;
+        }
+        /* Estilização do Destaque do Nome do Usuário */
+        .user-welcome {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--text-light) !important;
+            padding: 5px 12px;
+            border-radius: 50px;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+        /* Footer Elegante */
+        .footer-fixed {
+            background-color: var(--dark-bg);
+            color: #999;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top navbar-shadow">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-calendar-alt me-2"></i> **Smart Agenda**
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-lg-center">
+                    
+                    {% if current_user.is_authenticated %}
+                        
+                        <li class="nav-item me-3">
+                            <span class="nav-link user-welcome">
+                                <i class="fas fa-user-circle me-1"></i> Olá, **{{ current_user.nome }}**
+                            </span>
+                        </li>
+                        
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('services.my_appointments') }}">
+                                <i class="fas fa-list-check me-1 text-info"></i> Meus Agendamentos
+                            </a>
+                        </li>
+                        
+                        {% if current_user.is_admin %}
+                        <li class="nav-item dropdown me-2">
+                            <a class="nav-link dropdown-toggle text-warning" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-screwdriver-wrench me-1"></i> Administração
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="adminDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('services.manage_appointments') }}">
+                                    <i class="fas fa-calendar-day me-1"></i> Gerenciar Agendamentos
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('services.list_services') }}">
+                                    <i class="fas fa-tags me-1"></i> Gerenciar Serviços
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger fw-bold" href="{{ url_for('services.admin_dashboard') }}">
+                                    <i class="fas fa-shield-alt me-1"></i> Admin Dashboard
+                                </a></li>
+                            </ul>
+                        </li>
+                        {% endif %}
+                        
+                        <li class="nav-item">
+                            <a class="btn btn-outline-light btn-sm ms-lg-3" href="{{ url_for('auth.logout') }}">
+                                <i class="fas fa-sign-out-alt me-1"></i> Sair
+                            </a> 
+                        </li>
+                        
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('auth.register') }}">
+                                <i class="fas fa-user-plus me-1"></i> Registrar
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="btn btn-primary btn-sm ms-lg-3" href="{{ url_for('auth.login') }}">
+                                <i class="fas fa-sign-in-alt me-1"></i> Login
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+            </div>
+    </nav>
+    
+    <main class="container">
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            <i class="fas fa-info-circle me-2"></i> {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer-fixed py-3 mt-5">
+        <div class="container text-center">
+            <small>&copy; 2025 Smart Agenda. Desenvolvido com Flask e Python.</small>
+        </div>
+    </footer>
+
+    {% block scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    {% endblock %}
+</body>
+</html>

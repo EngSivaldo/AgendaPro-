@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="mt-4">Meus Agendamentos</h1>
+<p><a href="{{ url_for('services.book_appointment') }}" class="btn btn-primary">Fazer Novo Agendamento</a></p>
+
+{% if appointments %}
+<div class="row">
+    {% for appointment in appointments %}
+    <div class="col-md-6 mb-4">
+        <div class="card {% if appointment.status == 'Cancelado' %}border-secondary{% elif appointment.data_horario < now() %}border-warning{% else %}border-success{% endif %}">
+            <div class="card-header bg-light">
+                **Agendamento #{{ appointment.id }}**
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ appointment.servico.nome }}</h5>
+                <p class="card-text">
+                    **Data/Hora:** {{ appointment.data_horario.strftime('%d/%m/%Y às %H:%M') }}<br>
+                    **Duração:** {{ appointment.servico.duracao_minutos }} minutos<br>
+                    **Preço:** R$ {{ "%.2f"|format(appointment.servico.preco) }}<br>
+                    **Status:** {% if appointment.status == 'Agendado' %}
+                    {% if appointment.data_horario < now() %}
+                    <span class="badge bg-secondary">Concluído</span>
+                    {% else %}
+                        <span class="badge bg-success">Agendado</span>
+                    {% endif %}
+                    {% else %}
+                        <span class="badge bg-secondary">Cancelado</span>
+                    {% endif %}
+                </p>
+
+                {% if appointment.status == 'Agendado' and appointment.data_horario > now() %}
+                <form method="POST" action="{{ url_for('services.cancel_appointment', appointment_id=appointment.id) }}" 
+                      style="display:inline;"
+                      onsubmit="return confirm('Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita.');">
+                    <button type="submit" class="btn btn-danger btn-sm">Cancelar Agendamento</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    Você ainda não possui agendamentos. <a href="{{ url_for('services.book_appointment') }}">Agende seu primeiro serviço!</a>
+</div>
+{% endif %}
+{% endblock %}

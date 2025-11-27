@@ -1,0 +1,4 @@
+Flask
+Flask-SQLAlchemy
+Flask-Login  # Para gerenciar sessões de usuário
+Werkzeug     # Para hashing de senhas (bcrypt/sha256)

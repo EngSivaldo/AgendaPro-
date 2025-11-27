@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h2 class="text-center mb-4">Novo Agendamento</h2>
+        
+        <form method="POST" id="appointment-form">
+            <div class="mb-3">
+                <label for="service_id" class="form-label">Selecione o Serviço</label>
+                <select class="form-select" id="service_id" name="service_id" required>
+                    <option value="" disabled selected>Escolha um serviço</option>
+                    {% for service in services %}
+                        <option value="{{ service.id }}" data-duration="{{ service.duracao_minutos }}">
+                            {{ service.nome }} ({{ service.duracao_minutos }} min) - R$ {{ "%.2f"|format(service.preco) }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="date" class="form-label">Selecione a Data</label>
+                <input type="date" class="form-control" id="date" name="date" required 
+                       min="{{ now().strftime('%Y-%m-%d') }}">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Horários Disponíveis</label>
+                <div id="slots-container" class="border p-3 bg-light rounded" style="min-height: 50px;">
+                    <p class="text-muted" id="slots-message">Selecione um Serviço e uma Data.</p>
+                </div>
+            </div>
+
+            <input type="hidden" name="time" id="selected_time" required>
+
+            <button type="submit" class="btn btn-primary" id="submit-button" disabled>Agendar</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Obtém referências aos elementos do DOM
+    const serviceSelect = document.getElementById('service_id');
+    const dateInput = document.getElementById('date');
+    const slotsContainer = document.getElementById('slots-container');
+    const slotsMessage = document.getElementById('slots-message');
+    const selectedTimeInput = document.getElementById('selected_time');
+    const submitButton = document.getElementById('submit-button');
+
+    // Função principal para buscar e exibir os horários
+    function fetchAvailableSlots() {
+        const serviceId = serviceSelect.value;
+        const date = dateInput.value;
+
+        // Limpa slots e desabilita botão de submissão
+        slotsContainer.innerHTML = '';
+        slotsMessage.innerText = 'Buscando horários...';
+        selectedTimeInput.value = '';
+        submitButton.disabled = true;
+
+        if (!serviceId || !date) {
+            slotsMessage.innerText = 'Selecione um Serviço e uma Data.';
+            return;
+        }
+
+        // Faz a chamada AJAX (Fetch API) para o novo endpoint
+        fetch(`/services/api/available_slots?service_id=${serviceId}&date=${date}`)
+            .then(response => response.json())
+            .then(data => {
+                slotsContainer.innerHTML = '';
+                slotsMessage.innerText = '';
+
+                if (data.error) {
+                    slotsContainer.innerHTML = `<p class="text-danger">Erro: ${data.error}</p>`;
+                    return;
+                }
+
+                const slots = data.available_slots;
+
+                if (slots.length === 0) {
+                    slotsMessage.innerText = 'Nenhum horário disponível para o dia selecionado.';
+                    return;
+                }
+                
+                // Exibe os slots como botões clicáveis
+                slots.forEach(time => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'btn btn-outline-success btn-sm m-1 slot-button';
+                    button.innerText = time;
+                    button.dataset.time = time;
+                    
+                    button.addEventListener('click', () => {
+                        // 1. Remove a classe 'active' de todos os botões
+                        document.querySelectorAll('.slot-button').forEach(btn => {
+                            btn.classList.remove('active', 'btn-success');
+                            btn.classList.add('btn-outline-success');
+                        });
+                        
+                        // 2. Marca o botão selecionado e atualiza o campo escondido
+                        button.classList.add('active', 'btn-success');
+                        button.classList.remove('btn-outline-success');
+                        selectedTimeInput.value = time;
+                        submitButton.disabled = false; // Habilita o botão de agendar
+                    });
+
+                    slotsContainer.appendChild(button);
+                });
+            })
+            .catch(error => {
+                console.error('Erro ao buscar slots:', error);
+                slotsContainer.innerHTML = '<p class="text-danger">Erro de conexão ao buscar horários.</p>';
+            });
+    }
+
+    // Adiciona o listener para que a busca seja feita sempre que o serviço ou a data mudar
+    serviceSelect.addEventListener('change', fetchAvailableSlots);
+    dateInput.addEventListener('change', fetchAvailableSlots);
+
+    // Inicializa a busca (caso o usuário volte para a página e os campos estejam preenchidos)
+    document.addEventListener('DOMContentLoaded', () => {
+        // Define a data mínima para o campo de data (hoje)
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.setAttribute('min', today);
+        
+        // Se ambos estiverem preenchidos, busca slots
+        if (serviceSelect.value && dateInput.value) {
+            fetchAvailableSlots();
+        }
+    });
+
+</script>
+{% endblock %}
