@@ -23,3 +23,4 @@ instance/agendamentos.db
 # Se você tiver um arquivo de configuração de produção ou de segredos.
 # Exemplo: Se você usar 'instance/config.py'
 instance/config.py
+.env

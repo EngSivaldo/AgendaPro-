@@ -1,10 +1,11 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
 from flask_login import login_required, current_user
-from app import db 
-from app.decorators import admin_required # <-- CORRIGIDO AQUI: Importa do arquivo decorators.py
+from app import db, mail
+from app.decorators import admin_required
 from datetime import datetime, timedelta
 from app.models import Service, Appointment, User 
 from sqlalchemy import or_, func, and_
+from flask_mail import Message # Importa a classe Message
 
 # ----------------------------------------------------------------------
 # 📌 1. DEFINIÇÃO DO BLUEPRINT
@@ -12,8 +13,51 @@ from sqlalchemy import or_, func, and_
 bp = Blueprint('services', __name__, url_prefix='/services', template_folder='templates')
 
 # ----------------------------------------------------
-# 📌 2. FUNÇÃO AUXILIAR has_conflict 
+# 📌 2. FUNÇÃO AUXILIAR DE ENVIO DE EMAIL
 # ----------------------------------------------------
+def send_appointment_email(appointment, subject, status):
+    """
+    Envia email de notificação para o usuário sobre o agendamento.
+    :param appointment: Objeto Appointment do DB
+    :param subject: Assunto do Email
+    :param status: Status da ação (e.g., 'Confirmado', 'Cancelado', 'Reagendado')
+    """
+    
+    # Cria o objeto Message
+    msg = Message(
+        subject,
+        recipients=[appointment.user.email] 
+    )
+    
+    # Conteúdo de texto simples
+    msg.body = f"""
+Olá, {appointment.user.nome}!
+
+Seu agendamento foi {status.lower()} com sucesso.
+
+Detalhes do Serviço:
+- Serviço: {appointment.servico.nome}
+- Data/Hora: {appointment.data_horario.strftime('%d/%m/%Y às %H:%M')}
+- Duração: {appointment.servico.duracao_minutos} minutos
+- Status: {appointment.status}
+
+Para visualizar ou cancelar seu agendamento, acesse a seção 'Meus Agendamentos' no aplicativo.
+
+Atenciosamente,
+Sua Equipe de Agendamentos.
+"""
+    
+    try:
+        mail.send(msg)
+        print(f"DEBUG: Email enviado com sucesso para {appointment.user.email} (Assunto: {subject})")
+    except Exception as e:
+        print(f"ERRO CRÍTICO AO ENVIAR EMAIL: Verifique a configuração SMTP e a Senha de App. Erro: {e}")
+
+
+# ----------------------------------------------------
+# 📌 3. FUNÇÕES AUXILIARES (has_conflict e get_available_slots)
+# ----------------------------------------------------
+
 def has_conflict(service_id, desired_start_time):
     """Verifica se o horário desejado conflita com agendamentos existentes."""
     
@@ -46,9 +90,6 @@ def has_conflict(service_id, desired_start_time):
     
     return False
 
-# ----------------------------------------------------
-# 📌 3. FUNÇÃO AUXILIAR DE CÁLCULO DE DISPONIBILIDADE
-# ----------------------------------------------------
 def get_available_slots(service_id, date_obj):
     """Calcula e retorna todos os slots disponíveis de um serviço em um dia."""
     
@@ -128,7 +169,6 @@ def api_available_slots():
         return jsonify({'error': 'Missing service_id or date'}), 400
 
     try:
-        # Cria um objeto datetime com a data e hora mínima para a função de cálculo
         date_obj = datetime.strptime(date_str, '%Y-%m-%d')
     except ValueError:
         return jsonify({'error': 'Invalid date format'}), 400
@@ -182,8 +222,19 @@ def book_appointment():
         db.session.add(new_appointment)
         db.session.commit()
         
-        flash('Agendamento realizado com sucesso!', 'success')
-        return redirect(url_for('services.my_appointments')) # Melhor redirecionar para a lista de agendamentos do usuário
+        # 💡 NOVO: CHAMADA DE ENVIO DE EMAIL DE CONFIRMAÇÃO
+        # Acessar as propriedades antes de enviar o email para garantir que as relações foram carregadas
+        new_appointment.user.email 
+        new_appointment.servico.nome
+        
+        send_appointment_email(
+            appointment=new_appointment, 
+            subject="Confirmação de Agendamento Realizado", 
+            status='Confirmado'
+        )
+        
+        flash('Agendamento realizado com sucesso! Um email de confirmação foi enviado.', 'success')
+        return redirect(url_for('services.my_appointments'))
 
     return render_template('services/book.html', title='Novo Agendamento', services=services, now=datetime.now)
     
@@ -194,7 +245,6 @@ def book_appointment():
 @admin_required
 def admin_dashboard():
     """Renderiza o template do Painel de Administração."""
-    # Aqui você pode adicionar lógica para calcular estatísticas se quiser
     return render_template('admin_dashboard.html', title='Dashboard Admin')
 
 
@@ -204,8 +254,8 @@ def admin_dashboard():
 def my_appointments():
     """Visualiza todos os agendamentos do usuário logado."""
     appointments = Appointment.query.filter_by(user_id=current_user.id)\
-                                   .order_by(Appointment.data_horario.asc())\
-                                   .all()
+                                     .order_by(Appointment.data_horario.asc())\
+                                     .all()
     
     return render_template('services/my_appointments.html', 
                            title='Meus Agendamentos', 
@@ -229,7 +279,6 @@ def cancel_appointment(appointment_id):
     # Verifica se o agendamento já passou
     if appointment.data_horario < datetime.now():
         flash('Não é possível cancelar um agendamento que já ocorreu.', 'danger')
-        # Redireciona corretamente, dependendo do usuário
         if current_user.is_admin:
             return redirect(url_for('services.manage_appointments')) 
         else:
@@ -238,7 +287,17 @@ def cancel_appointment(appointment_id):
     appointment.status = 'Cancelado'
     db.session.commit()
     
-    flash('Agendamento cancelado com sucesso.', 'info')
+    # 💡 NOVO: Envio de email de cancelamento
+    try:
+        send_appointment_email(
+            appointment=appointment, 
+            subject="CANCELAMENTO de Agendamento", 
+            status='Cancelado'
+        )
+    except Exception as e:
+        print(f"AVISO: Falha ao enviar email de cancelamento: {e}") 
+
+    flash('Agendamento cancelado com sucesso. Notificação enviada.', 'info')
     
     if current_user.is_admin:
         return redirect(url_for('services.manage_appointments')) 
@@ -267,7 +326,9 @@ def create_service():
         descricao = request.form.get('descricao')
         
         try:
-            preco = float(request.form.get('preco')) 
+            # 💡 CORREÇÃO: Trata a vírgula para ponto ao converter para float
+            preco_str = request.form.get('preco').replace(',', '.') 
+            preco = float(preco_str) 
             duracao_minutos = int(request.form.get('duracao_minutos'))
         except (ValueError, TypeError): 
             flash('Preço e Duração devem ser números válidos.', 'danger')
@@ -304,9 +365,6 @@ def manage_appointments():
                            appointments=all_appointments,
                            now=datetime.now)
     
-
-
-## --- ROTA: EDITAR SERVIÇO (Admin) ---
 ## --- ROTA: EDITAR SERVIÇO (Admin) ---
 @bp.route('/edit/<int:service_id>', methods=['GET', 'POST'])
 @login_required
@@ -321,33 +379,25 @@ def edit_service(service_id):
         descricao = request.form.get('descricao')
         
         # ----------------------------------------------------
-        # 📌 LÓGICA ROBUSTA DE CONVERSÃO NUMÉRICA
+        # 📌 LÓGICA ROBUSTA DE CONVERSÃO NUMÉRICA (CÓDIGO LIMPO DE \ua0)
         # ----------------------------------------------------
         try:
-            # Pega o Preço:
-            # 1. Usa um valor padrão '0' se estiver vazio.
-            # 2. Converte vírgula para ponto.
+            # Pega o Preço e converte vírgula para ponto.
             preco_str = request.form.get('preco', '0').replace(',', '.')
             
-            # Pega a Duração:
-            # 1. Usa um valor padrão '0' se estiver vazio.
+            # Pega a Duração
             duracao_str = request.form.get('duracao_minutos', '0')
             
             # Converte para float e int
             preco = float(preco_str) 
             duracao_minutos = int(duracao_str)
             
-            # 🚨 ADICIONE ESTA LINHA DE DEBUG
-            print(f"DEBUG FINAL: Preço lido: {preco}, Duração lida: {duracao_minutos}") 
-            # -------------------------------
-
             # 🚨 VALIDAÇÃO DE NEGÓCIO: Se um dos campos for zero ou negativo, rejeita.
             if preco < 0 or duracao_minutos <= 0:
                 flash('O preço deve ser positivo e a duração deve ser maior que zero.', 'danger')
                 return redirect(url_for('services.edit_service', service_id=service.id))
 
         except (ValueError, TypeError): 
-            # Captura se o usuário digitou texto inválido (ex: "abc")
             flash('Preço e Duração devem ser números válidos. Por favor, verifique os campos.', 'danger')
             return redirect(url_for('services.edit_service', service_id=service.id))
         
@@ -365,7 +415,7 @@ def edit_service(service_id):
         return redirect(url_for('services.list_services'))
 
     # Para requisição GET, renderiza o formulário preenchido com os dados atuais
-    return render_template('edit_service.html', 
+    return render_template('services/edit_service.html', # 💡 CORRIGIDO o caminho do template, se necessário
                            title=f'Editar Serviço: {service.nome}', 
                            service=service)
     
@@ -380,7 +430,6 @@ def delete_service(service_id):
     service = Service.query.get_or_404(service_id)
     
     # 📌 REGRAS DE NEGÓCIO: Verificação de Agendamentos Pendentes
-    # Verifica se há algum agendamento 'Agendado' (ou não cancelado) para este serviço
     has_appointments = Appointment.query.filter(
         Appointment.service_id == service.id,
         Appointment.status.in_(['Agendado', 'Concluído']) # Exclui Cancelados
@@ -401,9 +450,7 @@ def delete_service(service_id):
     return redirect(url_for('services.list_services'))
 
 
-
-# app/services/routes.py
-
+## --- ROTA: ATUALIZAR STATUS (Admin) ---
 @bp.route('/update_status/<int:appointment_id>', methods=['POST'])
 @login_required
 @admin_required
@@ -414,31 +461,28 @@ def update_appointment_status(appointment_id):
     valid_statuses = ['Agendado', 'Concluído', 'Cancelado', 'Reagendado']
     
     if new_status not in valid_statuses:
-        # ... (flash de status inválido)
+        flash('Status inválido.', 'danger')
         return redirect(url_for('services.manage_appointments'))
 
     if appointment.status == new_status:
-        # ... (flash de status inalterado)
+        flash('Status inalterado.', 'info')
         return redirect(url_for('services.manage_appointments'))
 
     try:
         # 1. ATUALIZA O OBJETO
         appointment.status = new_status
         # 2. TENTA SALVAR
-        db.session.commit() # <-- PONTO DA FALHA
+        db.session.commit() 
         flash(f'Status do agendamento atualizado para "{new_status}".', 'success')
     except Exception as e:
-        # 3. FALHA E FAZ ROLLBACK
         db.session.rollback()
-        # 🚨 Use o print(e) para ver o erro real no terminal
         print(f"ERRO DE DB: {e}") 
         flash(f'Erro ao atualizar o status. Tente novamente.', 'danger')
         
     return redirect(url_for('services.manage_appointments'))
 
 
-
-
+## --- ROTA: REAGENDAR (Admin) ---
 @bp.route('/reschedule/<int:appointment_id>', methods=['POST'])
 @login_required
 @admin_required
@@ -454,17 +498,15 @@ def reschedule_appointment(appointment_id):
     
     # 1. Tenta converter a string do formato HTML para datetime
     try:
-        # O formato de entrada de datetime-local é YYYY-MM-DDTHH:MM
         new_datetime = datetime.strptime(new_datetime_str, '%Y-%m-%dT%H:%M')
     except ValueError:
-        flash('Formato de data e hora inválido. Use AAAA-MM-DD HH:MM.', 'danger')
+        flash('Formato de data e hora inválido.', 'danger')
         return redirect(url_for('services.manage_appointments'))
 
-    # 🚨 VALIDAÇÃO DE DATA FUTURA (A CORREÇÃO) 🚨
+    # 🚨 VALIDAÇÃO DE DATA FUTURA 🚨
     if new_datetime < datetime.now():
-        flash('A data e hora do reagendamento não podem ser no passado. Por favor, selecione uma data futura.', 'danger')
+        flash('A data e hora do reagendamento não podem ser no passado.', 'danger')
         return redirect(url_for('services.manage_appointments'))
-    # -----------------------------------------------
 
     # 2. Atualiza e salva no banco de dados
     try:
@@ -473,6 +515,14 @@ def reschedule_appointment(appointment_id):
         appointment.status = 'Reagendado' 
         
         db.session.commit()
+        
+        # 💡 NOVO: Envio de email de reagendamento
+        send_appointment_email(
+            appointment=appointment, 
+            subject="REAGENDAMENTO de Serviço", 
+            status='Reagendado'
+        )
+        
         flash(f'Agendamento #{appointment.id} reagendado com sucesso para {new_datetime.strftime("%d/%m/%Y às %H:%M")}.', 'success')
     except Exception as e:
         db.session.rollback()
