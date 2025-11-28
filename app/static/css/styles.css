@@ -1,0 +1,51 @@
+/* Definições de Variáveis */
+:root {
+  --primary-color: #007bff; /* Azul Padrão */
+  --dark-bg: #212529; /* Fundo Escuro da Navbar/Rodapé */
+  --text-light: #f8f9fa;
+}
+
+/* 3. Sticky Footer: Garantindo 100% de altura para o comportamento flex */
+html,
+body {
+  height: 100%; /* Essencial para o flexbox funcionar */
+}
+
+/* 1. Estilos Globais e Reset Visual */
+body {
+  background-color: #f4f7f6; /* Fundo Suave e Claro */
+  padding-top: 70px; /* Espaço para a navbar fixa */
+}
+
+.navbar-dark .navbar-brand {
+  font-weight: 700; /* Bold */
+  letter-spacing: 0.5px;
+}
+
+/* Sombra na Navbar para Profissionalismo */
+.navbar-shadow {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Destaque para Flash Messages */
+.alert {
+  margin-top: 1rem;
+  border-radius: 0.5rem;
+}
+
+/* Estilização do Destaque do Nome do Usuário */
+.user-welcome {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-light) !important;
+  padding: 5px 12px;
+  border-radius: 50px;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+/* Rodapé Ajustado (classe .footer-fixed removida, apenas estilos de cor/sombra) */
+footer {
+  /* bg-dark (fundo escuro) e py-3 (padding) são classes Bootstrap no HTML */
+  color: #999;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}

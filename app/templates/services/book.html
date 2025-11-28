@@ -2,39 +2,55 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-6">
-        <h2 class="text-center mb-4">Novo Agendamento</h2>
-        
-        <form method="POST" id="appointment-form">
-            <div class="mb-3">
-                <label for="service_id" class="form-label">Selecione o Serviço</label>
-                <select class="form-select" id="service_id" name="service_id" required>
-                    <option value="" disabled selected>Escolha um serviço</option>
-                    {% for service in services %}
-                        <option value="{{ service.id }}" data-duration="{{ service.duracao_minutos }}">
-                            {{ service.nome }} ({{ service.duracao_minutos }} min) - R$ {{ "%.2f"|format(service.preco) }}
-                        </option>
-                    {% endfor %}
-                </select>
+    <div class="col-md-7 col-lg-6">
+        <div class="card shadow-lg border-0">
+            <div class="card-header bg-primary text-white text-center py-3">
+                <h2 class="mb-0"><i class="fas fa-calendar-alt"></i> Agende Seu Serviço</h2>
             </div>
+            
+            <div class="card-body p-4">
+                <form method="POST" id="appointment-form">
+                    
+                    <div class="mb-4">
+                        <label for="service_id" class="form-label text-primary fw-bold">1. Selecione o Serviço</label>
+                        <select class="form-select form-select-lg" id="service_id" name="service_id" required>
+                            <option value="" disabled selected>-- Escolha um serviço --</option>
+                            {% for service in services %}
+                                <option value="{{ service.id }}" data-duration="{{ service.duracao_minutos }}">
+                                    {{ service.nome }} ({{ service.duracao_minutos }} min) - R$ {{ "%.2f"|format(service.preco) }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-            <div class="mb-3">
-                <label for="date" class="form-label">Selecione a Data</label>
-                <input type="date" class="form-control" id="date" name="date" required 
-                       min="{{ now().strftime('%Y-%m-%d') }}">
+                    <div class="mb-4">
+                        <label for="date" class="form-label text-primary fw-bold">2. Escolha a Data</label>
+                        <input type="date" class="form-control form-control-lg" id="date" name="date" required 
+                               min="{{ now().strftime('%Y-%m-%d') }}">
+                    </div>
+                    
+                    <hr class="my-4">
+
+                    <div class="mb-4">
+                        <h5 class="mb-3 text-secondary">3. Horários Disponíveis:</h5>
+                        
+                        <div id="slots-container" class="p-3 border rounded bg-white" style="min-height: 50px;">
+                            <p class="text-muted mb-0" id="slots-message">Selecione um Serviço e uma Data.</p>
+                        </div>
+                        
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-3 w-100" id="show-slots-button">
+                            <i class="fas fa-search"></i> Buscar Horários Disponíveis
+                        </button>
+                    </div>
+
+                    <input type="hidden" name="time" id="selected_time" required>
+
+                    <button type="submit" class="btn btn-success btn-lg w-100 mt-4" id="submit-button" disabled>
+                        <i class="fas fa-check-circle"></i> Finalizar Agendamento
+                    </button>
+                </form>
             </div>
-
-            <div class="mb-3">
-                <label class="form-label">Horários Disponíveis</label>
-                <div id="slots-container" class="border p-3 bg-light rounded" style="min-height: 50px;">
-                    <p class="text-muted" id="slots-message">Selecione um Serviço e uma Data.</p>
-                </div>
-            </div>
-
-            <input type="hidden" name="time" id="selected_time" required>
-
-            <button type="submit" class="btn btn-primary" id="submit-button" disabled>Agendar</button>
-        </form>
+        </div>
     </div>
 </div>
 
@@ -46,39 +62,56 @@
     const slotsMessage = document.getElementById('slots-message');
     const selectedTimeInput = document.getElementById('selected_time');
     const submitButton = document.getElementById('submit-button');
+    const showSlotsButton = document.getElementById('show-slots-button'); // Novo elemento
 
+    // Função para mostrar mensagens no contêiner de slots
+    function updateSlotsMessage(text, isError = false) {
+        slotsContainer.innerHTML = ''; // Limpa o conteúdo de botões
+        const messageElement = document.createElement('p');
+        messageElement.className = isError ? 'text-danger mb-0' : 'text-muted mb-0';
+        messageElement.innerText = text;
+        slotsContainer.appendChild(messageElement);
+    }
+    
     // Função principal para buscar e exibir os horários
-    function fetchAvailableSlots() {
+    function fetchAvailableSlots(isManualClick = false) {
         const serviceId = serviceSelect.value;
         const date = dateInput.value;
-
-        // Limpa slots e desabilita botão de submissão
-        slotsContainer.innerHTML = '';
-        slotsMessage.innerText = 'Buscando horários...';
+        
+        // Limpa a seleção de horário anterior
         selectedTimeInput.value = '';
         submitButton.disabled = true;
 
-        if (!serviceId || !date) {
-            slotsMessage.innerText = 'Selecione um Serviço e uma Data.';
-            return;
+        if (!serviceId) {
+            updateSlotsMessage('Por favor, selecione um Serviço.');
+            // Se for um clique manual, alertar de forma mais enfática
+            if (isManualClick) alert('Atenção: Você deve selecionar o Serviço.');
+            return false;
         }
+        
+        if (!date) {
+            updateSlotsMessage('Por favor, selecione uma Data.');
+            if (isManualClick) alert('Atenção: Você deve selecionar uma Data.');
+            return false;
+        }
+
+        updateSlotsMessage('Buscando horários...', false); // Mensagem de carregamento
 
         // Faz a chamada AJAX (Fetch API) para o novo endpoint
         fetch(`/services/api/available_slots?service_id=${serviceId}&date=${date}`)
             .then(response => response.json())
             .then(data => {
-                slotsContainer.innerHTML = '';
-                slotsMessage.innerText = '';
+                slotsContainer.innerHTML = ''; // Limpa a mensagem de 'buscando'
 
                 if (data.error) {
-                    slotsContainer.innerHTML = `<p class="text-danger">Erro: ${data.error}</p>`;
+                    updateSlotsMessage(`Erro: ${data.error}`, true);
                     return;
                 }
 
                 const slots = data.available_slots;
 
                 if (slots.length === 0) {
-                    slotsMessage.innerText = 'Nenhum horário disponível para o dia selecionado.';
+                    updateSlotsMessage('Nenhum horário disponível para o dia selecionado. Tente outra data.', false);
                     return;
                 }
                 
@@ -86,20 +119,20 @@
                 slots.forEach(time => {
                     const button = document.createElement('button');
                     button.type = 'button';
-                    button.className = 'btn btn-outline-success btn-sm m-1 slot-button';
+                    button.className = 'btn btn-outline-primary btn-sm m-1 slot-button';
                     button.innerText = time;
                     button.dataset.time = time;
                     
-                    button.addEventListener('click', () => {
-                        // 1. Remove a classe 'active' de todos os botões
+                    button.addEventListener('click', (event) => {
+                        // 1. Remove a seleção de todos os outros
                         document.querySelectorAll('.slot-button').forEach(btn => {
-                            btn.classList.remove('active', 'btn-success');
-                            btn.classList.add('btn-outline-success');
+                            btn.classList.remove('active', 'btn-primary');
+                            btn.classList.add('btn-outline-primary');
                         });
                         
-                        // 2. Marca o botão selecionado e atualiza o campo escondido
-                        button.classList.add('active', 'btn-success');
-                        button.classList.remove('btn-outline-success');
+                        // 2. Marca o selecionado e atualiza o campo escondido
+                        event.target.classList.add('active', 'btn-primary');
+                        event.target.classList.remove('btn-outline-primary');
                         selectedTimeInput.value = time;
                         submitButton.disabled = false; // Habilita o botão de agendar
                     });
@@ -109,23 +142,30 @@
             })
             .catch(error => {
                 console.error('Erro ao buscar slots:', error);
-                slotsContainer.innerHTML = '<p class="text-danger">Erro de conexão ao buscar horários.</p>';
+                updateSlotsMessage('Erro de conexão ao buscar horários. Verifique sua rede.', true);
             });
+            
+            return true;
     }
 
-    // Adiciona o listener para que a busca seja feita sempre que o serviço ou a data mudar
-    serviceSelect.addEventListener('change', fetchAvailableSlots);
-    dateInput.addEventListener('change', fetchAvailableSlots);
+    // 1. Adiciona o listener para que a busca seja feita automaticamente (padrão)
+    serviceSelect.addEventListener('change', () => fetchAvailableSlots(false));
+    dateInput.addEventListener('change', () => fetchAvailableSlots(false));
 
-    // Inicializa a busca (caso o usuário volte para a página e os campos estejam preenchidos)
+    // 2. Listener para o novo BOTÃO DE AÇÃO MANUAL
+    showSlotsButton.addEventListener('click', () => {
+        // Passamos 'true' para indicar que é um clique manual e forçar o alerta em caso de erro
+        fetchAvailableSlots(true);
+    });
+
+    // Inicializa a busca (Garante que a data mínima está correta)
     document.addEventListener('DOMContentLoaded', () => {
-        // Define a data mínima para o campo de data (hoje)
         const today = new Date().toISOString().split('T')[0];
         dateInput.setAttribute('min', today);
         
-        // Se ambos estiverem preenchidos, busca slots
+        // Se ambos estiverem preenchidos (ex: após erro de submissão), busca slots automaticamente
         if (serviceSelect.value && dateInput.value) {
-            fetchAvailableSlots();
+            fetchAvailableSlots(false);
         }
     });
 

@@ -23,8 +23,15 @@
             <td>{{ service.duracao_minutos }}</td>
             <td>{{ service.descricao or 'N/A' }}</td>
             <td>
-                <a href="#" class="btn btn-sm btn-warning">Editar</a>
-                <a href="#" class="btn btn-sm btn-danger">Excluir</a>
+                <a href="{{ url_for('services.edit_service', service_id=service.id) }}" class="btn btn-sm btn-info me-2">
+                    <i class="fas fa-edit"></i> Editar
+                </a>
+                <form method="POST" action="{{ url_for('services.delete_service', service_id=service.id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-danger" 
+                            onclick="return confirm('ATENÇÃO: Deseja realmente remover o serviço {{ service.nome }}? Esta ação é irreversível e pode exigir a remoção de agendamentos associados.');">
+                        <i class="fas fa-trash"></i> Excluir
+                    </button>
+                </form>
             </td>
         </tr>
         {% else %}
@@ -33,5 +40,6 @@
         </tr>
         {% endfor %}
     </tbody>
+    
 </table>
 {% endblock %}

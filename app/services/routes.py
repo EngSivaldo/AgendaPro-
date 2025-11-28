@@ -303,3 +303,180 @@ def manage_appointments():
                            title='Gerenciar Agendamentos', 
                            appointments=all_appointments,
                            now=datetime.now)
+    
+
+
+## --- ROTA: EDITAR SERVIÇO (Admin) ---
+## --- ROTA: EDITAR SERVIÇO (Admin) ---
+@bp.route('/edit/<int:service_id>', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_service(service_id):
+    """Permite ao administrador editar um serviço existente."""
+    
+    service = Service.query.get_or_404(service_id)
+    
+    if request.method == 'POST':
+        nome = request.form.get('nome')
+        descricao = request.form.get('descricao')
+        
+        # ----------------------------------------------------
+        # 📌 LÓGICA ROBUSTA DE CONVERSÃO NUMÉRICA
+        # ----------------------------------------------------
+        try:
+            # Pega o Preço:
+            # 1. Usa um valor padrão '0' se estiver vazio.
+            # 2. Converte vírgula para ponto.
+            preco_str = request.form.get('preco', '0').replace(',', '.')
+            
+            # Pega a Duração:
+            # 1. Usa um valor padrão '0' se estiver vazio.
+            duracao_str = request.form.get('duracao_minutos', '0')
+            
+            # Converte para float e int
+            preco = float(preco_str) 
+            duracao_minutos = int(duracao_str)
+            
+            # 🚨 ADICIONE ESTA LINHA DE DEBUG
+            print(f"DEBUG FINAL: Preço lido: {preco}, Duração lida: {duracao_minutos}") 
+            # -------------------------------
+
+            # 🚨 VALIDAÇÃO DE NEGÓCIO: Se um dos campos for zero ou negativo, rejeita.
+            if preco < 0 or duracao_minutos <= 0:
+                flash('O preço deve ser positivo e a duração deve ser maior que zero.', 'danger')
+                return redirect(url_for('services.edit_service', service_id=service.id))
+
+        except (ValueError, TypeError): 
+            # Captura se o usuário digitou texto inválido (ex: "abc")
+            flash('Preço e Duração devem ser números válidos. Por favor, verifique os campos.', 'danger')
+            return redirect(url_for('services.edit_service', service_id=service.id))
+        
+        # ----------------------------------------------------
+        
+        # 1. Atualizar o objeto do serviço com os novos dados
+        service.nome = nome
+        service.descricao = descricao
+        service.preco = preco
+        service.duracao_minutos = duracao_minutos
+        
+        db.session.commit()
+        
+        flash(f'Serviço "{service.nome}" atualizado com sucesso!', 'success')
+        return redirect(url_for('services.list_services'))
+
+    # Para requisição GET, renderiza o formulário preenchido com os dados atuais
+    return render_template('edit_service.html', 
+                           title=f'Editar Serviço: {service.nome}', 
+                           service=service)
+    
+    
+## --- ROTA: DELETAR SERVIÇO (Admin) ---
+@bp.route('/delete/<int:service_id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_service(service_id):
+    """Permite ao administrador deletar um serviço existente."""
+    
+    service = Service.query.get_or_404(service_id)
+    
+    # 📌 REGRAS DE NEGÓCIO: Verificação de Agendamentos Pendentes
+    # Verifica se há algum agendamento 'Agendado' (ou não cancelado) para este serviço
+    has_appointments = Appointment.query.filter(
+        Appointment.service_id == service.id,
+        Appointment.status.in_(['Agendado', 'Concluído']) # Exclui Cancelados
+    ).first()
+    
+    if has_appointments:
+        flash(f'Não é possível deletar o serviço "{service.nome}". Existem agendamentos associados.', 'danger')
+        return redirect(url_for('services.list_services'))
+
+    try:
+        db.session.delete(service)
+        db.session.commit()
+        flash(f'Serviço "{service.nome}" removido permanentemente.', 'warning')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao deletar o serviço: {e}', 'danger')
+        
+    return redirect(url_for('services.list_services'))
+
+
+
+# app/services/routes.py
+
+@bp.route('/update_status/<int:appointment_id>', methods=['POST'])
+@login_required
+@admin_required
+def update_appointment_status(appointment_id):
+    
+    appointment = Appointment.query.get_or_404(appointment_id)
+    new_status = request.form.get('status')
+    valid_statuses = ['Agendado', 'Concluído', 'Cancelado', 'Reagendado']
+    
+    if new_status not in valid_statuses:
+        # ... (flash de status inválido)
+        return redirect(url_for('services.manage_appointments'))
+
+    if appointment.status == new_status:
+        # ... (flash de status inalterado)
+        return redirect(url_for('services.manage_appointments'))
+
+    try:
+        # 1. ATUALIZA O OBJETO
+        appointment.status = new_status
+        # 2. TENTA SALVAR
+        db.session.commit() # <-- PONTO DA FALHA
+        flash(f'Status do agendamento atualizado para "{new_status}".', 'success')
+    except Exception as e:
+        # 3. FALHA E FAZ ROLLBACK
+        db.session.rollback()
+        # 🚨 Use o print(e) para ver o erro real no terminal
+        print(f"ERRO DE DB: {e}") 
+        flash(f'Erro ao atualizar o status. Tente novamente.', 'danger')
+        
+    return redirect(url_for('services.manage_appointments'))
+
+
+
+
+@bp.route('/reschedule/<int:appointment_id>', methods=['POST'])
+@login_required
+@admin_required
+def reschedule_appointment(appointment_id):
+    """Permite ao administrador alterar a data e o status de um agendamento."""
+    
+    appointment = Appointment.query.get_or_404(appointment_id)
+    new_datetime_str = request.form.get('new_datetime')
+    
+    if not new_datetime_str:
+        flash('A nova data e hora para o reagendamento são obrigatórias.', 'danger')
+        return redirect(url_for('services.manage_appointments'))
+    
+    # 1. Tenta converter a string do formato HTML para datetime
+    try:
+        # O formato de entrada de datetime-local é YYYY-MM-DDTHH:MM
+        new_datetime = datetime.strptime(new_datetime_str, '%Y-%m-%dT%H:%M')
+    except ValueError:
+        flash('Formato de data e hora inválido. Use AAAA-MM-DD HH:MM.', 'danger')
+        return redirect(url_for('services.manage_appointments'))
+
+    # 🚨 VALIDAÇÃO DE DATA FUTURA (A CORREÇÃO) 🚨
+    if new_datetime < datetime.now():
+        flash('A data e hora do reagendamento não podem ser no passado. Por favor, selecione uma data futura.', 'danger')
+        return redirect(url_for('services.manage_appointments'))
+    # -----------------------------------------------
+
+    # 2. Atualiza e salva no banco de dados
+    try:
+        # Atualiza a data e define o status como Reagendado
+        appointment.data_horario = new_datetime
+        appointment.status = 'Reagendado' 
+        
+        db.session.commit()
+        flash(f'Agendamento #{appointment.id} reagendado com sucesso para {new_datetime.strftime("%d/%m/%Y às %H:%M")}.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        print(f"ERRO DE REAGENDAMENTO: {e}") 
+        flash('Erro ao salvar o reagendamento no banco de dados. Tente novamente.', 'danger')
+        
+    return redirect(url_for('services.manage_appointments'))

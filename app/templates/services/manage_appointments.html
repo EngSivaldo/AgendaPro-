@@ -7,36 +7,73 @@
 {% if appointments %}
 <div class="row">
     {% for appointment in appointments %}
+    {% set current_status = appointment.status %}
+    
     <div class="col-md-6 mb-4">
-        <div class="card {% if appointment.status == 'Cancelado' %}border-secondary{% elif appointment.data_horario < now() %}border-warning{% else %}border-success{% endif %}">
+        <div class="card 
+            {% if current_status == 'Cancelado' %}border-secondary
+            {% elif current_status == 'Concluído' %}border-primary
+            {% elif appointment.data_horario < now() and current_status == 'Agendado' %}border-danger
+            {% else %}border-success
+            {% endif %}">
+            
             <div class="card-header bg-light">
-                **Agendamento #{{ appointment.id }}**
+                <strong>Agendamento #{{ appointment.id }}</strong>
             </div>
+            
             <div class="card-body">
                 <h5 class="card-title">{{ appointment.servico.nome }}</h5>
                 <p class="card-text">
-                    **Cliente:** **{{ appointment.user.nome }}** (ID: {{ appointment.user.id }})<br>
-                    **Data/Hora:** {{ appointment.data_horario.strftime('%d/%m/%Y às %H:%M') }}<br>
-                    **Duração:** {{ appointment.servico.duracao_minutos }} minutos<br>
-                    **Preço:** R$ {{ "%.2f"|format(appointment.servico.preco) }}<br>
-                    **Status:** {% if appointment.status == 'Agendado' %}
-                    {% if appointment.data_horario < now() %}
-                    <span class="badge bg-secondary">Concluído</span>
-                    {% else %}
-                        <span class="badge bg-success">Agendado</span>
-                    {% endif %}
-                    {% else %}
-                        <span class="badge bg-secondary">Cancelado</span>
-                    {% endif %}
+                    <strong>Cliente:</strong> <strong>{{ appointment.user.nome }}</strong> (ID: {{ appointment.user.id }})<br>
+                    <strong>Data/Hora:</strong> <strong>{{ appointment.data_horario.strftime('%d/%m/%Y às %H:%M') }}</strong><br>
+                    <strong>Duração:</strong> {{ appointment.servico.duracao_minutos }} minutos<br>
+                    <strong>Preço:</strong> R$ {{ "%.2f"|format(appointment.servico.preco) }}
                 </p>
 
-                {% if appointment.status == 'Agendado' and appointment.data_horario > now() %}
-                <form method="POST" action="{{ url_for('services.cancel_appointment', appointment_id=appointment.id) }}" 
-                      style="display:inline;"
-                      onsubmit="return confirm('ATENÇÃO ADMIN: Cancelar o agendamento de {{ appointment.user.nome }}?');">
-                    <button type="submit" class="btn btn-danger btn-sm">Cancelar Agendamento</button>
+                <hr>
+
+                <h6 class="mt-3">Reagendar (Nova Data):</h6>
+                <form method="POST" action="{{ url_for('services.reschedule_appointment', appointment_id=appointment.id) }}" 
+                    style="display: flex; align-items: center; gap: 5px; margin-bottom: 15px;"
+                    onsubmit="return confirm('Confirmar reagendamento de {{ appointment.servico.nome }} para a nova data?');">
+                    
+                    <input type="datetime-local" 
+                           name="new_datetime" 
+                           class="form-control form-control-sm" 
+                           required 
+                           style="max-width: 200px;">
+                    
+                    <button type="submit" class="btn btn-sm btn-info" title="Reagendar">
+                        <i class="fas fa-calendar-alt"></i> Reagendar
+                    </button>
                 </form>
-                {% endif %}
+                
+                <hr>
+
+                <h6 class="mt-3">Mudar Status (Atual: 
+                    <span class="badge 
+                        {% if current_status == 'Cancelado' %}bg-danger
+                        {% elif current_status == 'Concluído' or current_status == 'Reagendado' %}bg-primary
+                        {% else %}bg-success{% endif %}">
+                        {{ current_status }}
+                    </span>
+                    ):
+                </h6>
+                <form method="POST" action="{{ url_for('services.update_appointment_status', appointment_id=appointment.id) }}" 
+                    style="display: flex; align-items: center; gap: 5px;">
+                    
+                    <select name="status" class="form-select form-select-sm" style="min-width: 130px;">
+                        
+                        <option value="Agendado" {% if current_status == 'Agendado' %}selected{% endif %}>Agendado</option>
+                        <option value="Concluído" {% if current_status == 'Concluído' %}selected{% endif %}>Concluído</option>
+                        <option value="Cancelado" {% if current_status == 'Cancelado' %}selected{% endif %}>Cancelado</option>
+                        
+                        </select>
+                    
+                    <button type="submit" class="btn btn-sm btn-success" title="Salvar Status">
+                        <i class="fas fa-sync-alt"></i> Salvar
+                    </button>
+                </form>
             </div>
         </div>
     </div>
