@@ -1,12 +1,14 @@
+from functools import wraps 
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
 from flask_login import login_required, current_user
 from app import db, mail
 from app.decorators import admin_required
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from app.models import Service, Appointment, User 
 from sqlalchemy import or_, func, and_
 from flask_mail import Message # Importa a classe Message
-
+from . import bp
+from app.tasks import send_appointment_reminder 
 # ----------------------------------------------------------------------
 # 📌 1. DEFINIÇÃO DO BLUEPRINT
 # ----------------------------------------------------------------------
@@ -57,10 +59,12 @@ Sua Equipe de Agendamentos.
 # ----------------------------------------------------
 # 📌 3. FUNÇÕES AUXILIARES (has_conflict e get_available_slots)
 # ----------------------------------------------------
+# app/services/routes.py (Ajuste na FUNÇÃO AUXILIAR has_conflict)
 
-def has_conflict(service_id, desired_start_time):
-    """Verifica se o horário desejado conflita com agendamentos existentes."""
-    
+def has_conflict(service_id, desired_start_time, appointment_id_to_exclude=None):
+    """Verifica se o horário desejado conflita com agendamentos existentes, 
+       excluindo um agendamento específico."""
+       
     service = Service.query.get(service_id)
     if not service:
         return False
@@ -71,23 +75,27 @@ def has_conflict(service_id, desired_start_time):
     start_of_day = datetime.combine(desired_start_time.date(), datetime.min.time())
     end_of_day_exclusive = start_of_day + timedelta(days=1) 
 
-    all_appointments_on_day = Appointment.query.join(Service).filter(
+    # 📌 NOVO: Adiciona filtro para excluir o agendamento que está sendo editado
+    query = Appointment.query.join(Service).filter(
         Appointment.data_horario >= start_of_day,
         Appointment.data_horario < end_of_day_exclusive
-    ).filter(Appointment.status == 'Agendado').all()
+    ).filter(Appointment.status == 'Agendado')
+    
+    if appointment_id_to_exclude:
+        query = query.filter(Appointment.id != appointment_id_to_exclude)
+        
+    all_appointments_on_day = query.all()
+    # ... (O restante da lógica de loop 'for existing_appointment in all_appointments_on_day:' permanece o mesmo) ...
     
     for existing_appointment in all_appointments_on_day:
-        
-        # O objeto do serviço é 'servico' (minúsculo) devido ao relacionamento
-        existing_service_duration = existing_appointment.servico.duracao_minutos 
-        existing_start_time = existing_appointment.data_horario
-        existing_end_time = existing_start_time + timedelta(minutes=existing_service_duration)
+        # ... (sua lógica de conflito existente) ...
+         existing_service_duration = existing_appointment.servico.duracao_minutos 
+         existing_start_time = existing_appointment.data_horario
+         existing_end_time = existing_start_time + timedelta(minutes=existing_service_duration)
 
-        # Lógica de Conflito: O novo agendamento começa antes do existente terminar E
-        # O novo agendamento termina depois do existente começar.
-        if desired_start_time < existing_end_time and desired_end_time > existing_start_time:
-            return True 
-    
+         if desired_start_time < existing_end_time and desired_end_time > existing_start_time:
+             return True 
+
     return False
 
 def get_available_slots(service_id, date_obj):
@@ -222,18 +230,35 @@ def book_appointment():
         db.session.add(new_appointment)
         db.session.commit()
         
-        # 💡 NOVO: CHAMADA DE ENVIO DE EMAIL DE CONFIRMAÇÃO
         # Acessar as propriedades antes de enviar o email para garantir que as relações foram carregadas
         new_appointment.user.email 
         new_appointment.servico.nome
         
+        # 5. Envio do Email de Confirmação Imediata
         send_appointment_email(
             appointment=new_appointment, 
             subject="Confirmação de Agendamento Realizado", 
             status='Confirmado'
         )
         
-        flash('Agendamento realizado com sucesso! Um email de confirmação foi enviado.', 'success')
+        # ========================================================
+        # 📌 6. AGENDAMENTO DO LEMBRETE CELERY (24 HORAS ANTES)
+        # ========================================================
+        
+        # Calcula o tempo para o lembrete (24 horas antes)
+        reminder_time = new_appointment.data_horario - timedelta(hours=24)
+        
+        # Verifica se o tempo de lembrete ainda está no futuro
+        if reminder_time > datetime.now():
+            send_appointment_reminder.apply_async(
+                args=[new_appointment.id], # Passa o ID do novo agendamento
+                eta=reminder_time           # Agendado para ser executado em 'reminder_time'
+            )
+            flash_message = 'Agendamento realizado com sucesso! Um email de confirmação foi enviado e um lembrete foi agendado.'
+        else:
+            flash_message = 'Agendamento realizado com sucesso! Um email de confirmação foi enviado.'
+        
+        flash(flash_message, 'success')
         return redirect(url_for('services.my_appointments'))
 
     return render_template('services/book.html', title='Novo Agendamento', services=services, now=datetime.now)
@@ -478,7 +503,10 @@ def update_appointment_status(appointment_id):
         flash('Status inválido.', 'danger')
         return redirect(url_for('services.manage_appointments'))
 
-    if appointment.status == new_status:
+    # 📌 NOVO: Pega o status atual ANTES de alterá-lo
+    old_status = appointment.status 
+
+    if old_status == new_status:
         flash('Status inalterado.', 'info')
         return redirect(url_for('services.manage_appointments'))
 
@@ -487,10 +515,20 @@ def update_appointment_status(appointment_id):
         appointment.status = new_status
         # 2. TENTA SALVAR
         db.session.commit() 
-        flash(f'Status do agendamento atualizado para "{new_status}".', 'success')
+
+        # 3. 📢 ENVIO DE EMAIL: Notifica o cliente sobre a mudança
+        # A notificação só é enviada se o status realmente mudou (já garantido pelo if acima)
+        send_appointment_email(
+            appointment=appointment, 
+            subject=f"ATUALIZAÇÃO DE STATUS: Agendamento ID {appointment_id}", 
+            status=new_status # Passa o novo status para o corpo do email
+        )
+        
+        flash(f'Status do agendamento atualizado para "{new_status}" e cliente notificado.', 'success')
+        
     except Exception as e:
         db.session.rollback()
-        print(f"ERRO DE DB: {e}") 
+        print(f"ERRO DE DB ao atualizar status: {e}") 
         flash(f'Erro ao atualizar o status. Tente novamente.', 'danger')
         
     return redirect(url_for('services.manage_appointments'))
@@ -517,12 +555,19 @@ def reschedule_appointment(appointment_id):
         flash('Formato de data e hora inválido.', 'danger')
         return redirect(url_for('services.manage_appointments'))
 
-    # 🚨 VALIDAÇÃO DE DATA FUTURA 🚨
+    # 2. 🚨 VALIDAÇÃO DE DATA FUTURA 🚨
     if new_datetime < datetime.now():
         flash('A data e hora do reagendamento não podem ser no passado.', 'danger')
         return redirect(url_for('services.manage_appointments'))
+        
+    # 3. 🚨 VALIDAÇÃO DE CONFLITO 🚨
+    # Passa o ID do agendamento atual para que ele seja ignorado na verificação
+    if has_conflict(appointment.service_id, new_datetime, appointment_id_to_exclude=appointment.id):
+        flash('ERRO: O novo horário conflita com outro agendamento existente. Selecione outro slot.', 'danger')
+        return redirect(url_for('services.manage_appointments'))
 
-    # 2. Atualiza e salva no banco de dados
+
+    # 4. Atualiza e salva no banco de dados
     try:
         # Atualiza a data e define o status como Reagendado
         appointment.data_horario = new_datetime
@@ -530,17 +575,103 @@ def reschedule_appointment(appointment_id):
         
         db.session.commit()
         
-        # 💡 NOVO: Envio de email de reagendamento
+        # 5. 📢 ENVIO DE EMAIL de reagendamento (já estava OK)
         send_appointment_email(
             appointment=appointment, 
             subject="REAGENDAMENTO de Serviço", 
             status='Reagendado'
         )
         
-        flash(f'Agendamento #{appointment.id} reagendado com sucesso para {new_datetime.strftime("%d/%m/%Y às %H:%M")}.', 'success')
+        # 6. 🚨 (OPCIONAL) CANCELAMENTO DO LEMBRETE ANTIGO E AGENDAMENTO DO NOVO
+        # Aqui você deveria cancelar o Celery task antigo e agendar um novo, 
+        # mas como você não tem o ID do task, essa é uma melhoria futura.
+        
+        flash(f'Agendamento #{appointment.id} reagendado com sucesso para {new_datetime.strftime("%d/%m/%Y às %H:%M")} e cliente notificado.', 'success')
     except Exception as e:
         db.session.rollback()
         print(f"ERRO DE REAGENDAMENTO: {e}") 
         flash('Erro ao salvar o reagendamento no banco de dados. Tente novamente.', 'danger')
         
     return redirect(url_for('services.manage_appointments'))
+
+
+
+# Função auxiliar para garantir que apenas administradores acessem
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_admin:
+            flash('Acesso restrito a administradores.', 'danger')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Rota para o Relatório de Faturamento
+# Rota para o Relatório de Faturamento
+@bp.route('/admin/reports/billing', methods=['GET'])
+@login_required
+@admin_required
+def billing_report():
+    """Calcula e exibe o faturamento total com base nos agendamentos concluídos."""
+    
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    
+    query = Appointment.query.filter_by(status='Concluído')
+    
+    # --- NOVO BLOCO: Definir padrão (Mês Atual) ---
+    today = date.today()
+    start_of_month = datetime(today.year, today.month, 1)
+    
+    # Calcula o último dia do mês atual (ou próximo mês)
+    try:
+        # Tenta ir para o dia 1 do próximo mês e subtrai 1 dia
+        end_of_month = datetime(today.year, today.month + 1, 1) - timedelta(seconds=1) 
+    except ValueError:
+        # Se for Dezembro (month + 1 = 13), vai para Janeiro do próximo ano
+        end_of_month = datetime(today.year + 1, 1, 1) - timedelta(seconds=1)
+
+    # 💡 DEFINIÇÕES INICIAIS (serão usadas se não houver filtro)
+    start_date_filter = start_of_month
+    end_date_filter = end_of_month
+    # -----------------------------------------------
+
+    # 1. Lógica do Período (Filtro do Usuário)
+    if start_date_str and end_date_str:
+        try:
+            start_date_obj = datetime.strptime(start_date_str, '%Y-%m-%d')
+            end_date_obj = datetime.strptime(end_date_str, '%Y-%m-%d')
+            
+            # Ajusta para incluir o dia inteiro
+            end_datetime = datetime.combine(end_date_obj.date(), datetime.max.time())
+            
+            # 💡 SOBRESCREVE OS FILTROS PARA A QUERY E PARA O DISPLAY
+            start_date_filter = start_date_obj
+            end_date_filter = end_datetime
+            
+        except ValueError:
+            flash('Formato de data inválido.', 'danger')
+            return redirect(url_for('services.billing_report'))
+            
+    # Filtra a Query com base nos filtros definidos (padrão ou pelo usuário)
+    query = query.filter(Appointment.data_horario >= start_date_filter,
+                         Appointment.data_horario <= end_date_filter)
+
+    # 2. Execução da Consulta
+    completed_appointments = query.all()
+
+    # 3. Cálculo do Faturamento
+    total_revenue = sum(appt.servico.preco for appt in completed_appointments)
+    
+    # 4. Retorno: Usa os filtros ATUAIS (start_date_filter/end_date_filter) para formatar
+    return render_template('services/billing_report.html', 
+                           title='Relatório de Faturamento',
+                           total_revenue=total_revenue,
+                           appointments=completed_appointments,
+                           
+                           # Passa a data formatada para ser usada nos INPUTS HTML (valor='2025-11-01')
+                           start_date=start_date_filter.strftime('%Y-%m-%d'),
+                           end_date=end_date_filter.strftime('%Y-%m-%d'),
+                           
+                           datetime=datetime 
+                           )

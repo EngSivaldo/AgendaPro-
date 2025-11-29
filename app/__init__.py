@@ -1,16 +1,22 @@
+# app/__init__.py
+
 from flask import Flask, render_template
+from celery import Celery 
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 import os
 from flask_mail import Mail
-# Importa a classe Config do arquivo config.py (necessária para carregar SQLALCHEMY_DATABASE_URI)
+# Importa a classe Config do arquivo config.py
 from .config import Config 
 
+
 # ===============================================
-# 📌 INICIALIZAÇÃO DE EXTENSÕES (Fora da função)
+# 1. INSTÂNCIAS GLOBAIS
 # ===============================================
 
-# Inicializa extensões fora da função para que possam ser importadas nos models e routes
+# 💡 Instância do Celery: Definida no nível superior
+celery = Celery(__name__) 
+
 db = SQLAlchemy()
 login_manager = LoginManager()
 mail = Mail() # Objeto Flask-Mail
@@ -19,9 +25,6 @@ def create_app(config_class=Config):
     # Cria a instância da aplicação Flask
     app = Flask(__name__, instance_relative_config=True)
 
-    # --- Configuração ---
-    # 🚨 CRÍTICO: Carrega TODAS as configurações (incluindo SQLALCHEMY_DATABASE_URI e MAIL_*) 
-    # Isso deve ocorrer antes de init_app das extensões.
     app.config.from_object(config_class) 
     
     # Garante que a pasta 'instance' existe
@@ -31,14 +34,34 @@ def create_app(config_class=Config):
         pass
 
     # --- Inicialização das Extensões com a App ---
-    # Agora as extensões encontram suas configurações em app.config
     db.init_app(app)
     login_manager.init_app(app)
-    mail.init_app(app) # Conecta o Flask-Mail à instância do Flask
+    mail.init_app(app) 
     
-    # --- Configuração do User Loader para Flask-Login ---
-    # Importa o modelo User aqui para evitar o problema de importação circular
-    from app.models import User
+    
+    # ===============================================
+    # 2. CONFIGURAÇÃO DO CELERY COM CONTEXTO
+    # ===============================================
+    
+    # Configura o Celery com as configurações do Flask (incluindo broker_url)
+    celery.conf.update(app.config) # ESTA LINHA ESTÁ CORRETA
+    
+    # Cria uma classe base para tarefas que injeta o contexto da aplicação Flask
+    class ContextTask(celery.Task):
+        def __call__(self, *args, **kwargs):
+            # Assegura que o db, mail, etc., funcionem dentro da tarefa Celery
+            with app.app_context(): 
+                return self.run(*args, **kwargs)
+    
+    celery.Task = ContextTask
+    
+    # ===============================================
+    
+    
+    # =ACTERÍSTICAS
+    # ===============================================
+    # 💡 Importa o modelo User AQUI, após db.init_app(app)
+    from app.models import User 
     
     @login_manager.user_loader
     def load_user(user_id):
@@ -49,7 +72,7 @@ def create_app(config_class=Config):
     login_manager.login_message_category = 'info'
 
     # ===============================================
-    # 📌 REGISTRO DE BLUEPRINTS
+    # 4. REGISTRO DE BLUEPRINTS E ROTAS
     # ===============================================
     
     # Importa e registra o Blueprint de Autenticação
@@ -60,24 +83,28 @@ def create_app(config_class=Config):
     from app.services.routes import bp as services_bp 
     app.register_blueprint(services_bp, url_prefix='/services')
     
-    # ===============================================
-    # 📌 ROTAS PRINCIPAIS (RAIZ)
-    # ===============================================
-    
+    # Rotas principais (RAIZ)
     @app.route('/')
     def index():
         return render_template('index.html', title='Início')
 
     # ===============================================
-    # 📌 REGISTRO DE COMANDOS CLI CUSTOMIZADOS
+    # 5. REGISTRO DE COMANDOS CLI CUSTOMIZADOS
     # ===============================================
     
     # Importa e registra o módulo cli.py para comandos como 'flask init-db'
-    # Use try/except caso o arquivo cli.py ainda não exista
     try:
         from app import cli 
-        for command in cli.cli_commands:
-            app.cli.add_command(command)
+        
+        # Registra a função de contexto de shell do módulo cli
+        if hasattr(cli, 'make_shell_context'):
+            app.shell_context_processor(cli.make_shell_context)
+            
+        # Registra comandos CLI (ex: flask create-admin)
+        if hasattr(cli, 'cli_commands'):
+            for command in cli.cli_commands:
+                app.cli.add_command(command)
+                
     except ImportError:
         pass # Ignora se cli.py ainda não estiver pronto
 

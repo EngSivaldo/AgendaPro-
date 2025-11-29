@@ -1,27 +1,23 @@
-# run.py
+# run.py (Versão Limpa)
 
 import os
-from dotenv import load_dotenv # Importa a função para carregar o .env
-from app import create_app, db
-from app.models import User, Service, Appointment
+from dotenv import load_dotenv 
+# Certifique-se de importar o celery aqui
+from app import create_app, celery 
+from app.models import User, Service, Appointment # Não precisa, mas pode manter
 
-# 💡 CORREÇÃO CRÍTICA: Carrega as variáveis do arquivo .env
-# Isso deve ser feito ANTES de criar a aplicação para que os.environ.get() 
-# possa ler as credenciais de email e a SECRET_KEY no config.py
+# Carrega as variáveis de ambiente
 load_dotenv()
-print(f"DEBUG EMAIL USER: {os.environ.get('MAIL_USERNAME')}") # Adicione esta linha
-print(f"DEBUG EMAIL PASS EXISTE: {bool(os.environ.get('MAIL_PASSWORD'))}") # Adicione esta linha
+print(f"DEBUG EMAIL USER: {os.environ.get('MAIL_USERNAME')}") 
+print(f"DEBUG EMAIL PASS EXISTE: {bool(os.environ.get('MAIL_PASSWORD'))}") 
 
-# Cria a instância da aplicação Flask
+# Cria a instância da aplicação Flask (o Celery é configurado dentro dela)
 app = create_app()
 
-# Permite criar e gerenciar o banco de dados no shell interativo
-@app.shell_context_processor
-def make_shell_context():
-    """Adiciona as instâncias do DB e dos Models ao contexto do Flask shell."""
-    return {'db': db, 'User': User, 'Service': Service, 'Appointment': Appointment}
+# Importação para o Celery Worker
+import app.tasks 
+
+# REMOVA O BLOCO shell_context_processor DAQUI!
 
 if __name__ == '__main__':
-    # Usamos app.run() apenas para rodar diretamente o arquivo Python
-    # O modo preferido (e mais seguro) é usar 'flask run' no terminal.
     app.run(debug=True)
