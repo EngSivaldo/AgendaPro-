@@ -1,49 +1,115 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1 class="mt-4">Meus Agendamentos</h1>
-<p><a href="{{ url_for('services.book_appointment') }}" class="btn btn-primary">Fazer Novo Agendamento</a></p>
+<h1 class="mt-4"><i class="fas fa-calendar-check me-2 text-info"></i> Meus Agendamentos</h1>
+<p class="mb-4">Gerencie todos os seus serviços agendados conosco.</p>
+
+<p><a href="{{ url_for('services.book_appointment') }}" class="btn btn-primary">
+    <i class="fas fa-plus-circle me-1"></i> Fazer Novo Agendamento
+</a></p>
 
 {% if appointments %}
 <div class="row">
     {% for appointment in appointments %}
-    <div class="col-md-6 mb-4">
-        <div class="card {% if appointment.status == 'Cancelado' %}border-secondary{% elif appointment.data_horario < now() %}border-warning{% else %}border-success{% endif %}">
-            <div class="card-header bg-light">
-                **Agendamento #{{ appointment.id }}**
-            </div>
-            <div class="card-body">
-                <h5 class="card-title">{{ appointment.servico.nome }}</h5>
-                <p class="card-text">
-                    **Data/Hora:** {{ appointment.data_horario.strftime('%d/%m/%Y às %H:%M') }}<br>
-                    **Duração:** {{ appointment.servico.duracao_minutos }} minutos<br>
-                    **Preço:** R$ {{ "%.2f"|format(appointment.servico.preco) }}<br>
-                    **Status:** {% if appointment.status == 'Agendado' %}
-                    {% if appointment.data_horario < now() %}
-                    <span class="badge bg-secondary">Concluído</span>
-                    {% else %}
-                        <span class="badge bg-success">Agendado</span>
-                    {% endif %}
-                    {% else %}
-                        <span class="badge bg-secondary">Cancelado</span>
-                    {% endif %}
-                </p>
+    {% set appt_passed = appointment.data_horario < now() %}
+    
+    {# Define a classe da borda para destaque visual #}
+    {% set border_class = 'border-success' %}
+    {% if appointment.status == 'Cancelado' %}
+        {% set border_class = 'border-secondary' %}
+    {% elif appointment.status == 'Concluído' %}
+        {% set border_class = 'border-primary' %}
+    {% elif appointment.status == 'Reagendado' %}
+        {% set border_class = 'border-warning' %}
+    {% elif appt_passed %}
+        {% set border_class = 'border-danger' %}
+    {% endif %}
 
-                {% if appointment.status == 'Agendado' and appointment.data_horario > now() %}
-                <form method="POST" action="{{ url_for('services.cancel_appointment', appointment_id=appointment.id) }}" 
-                      style="display:inline;"
-                      onsubmit="return confirm('Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita.');">
-                    <button type="submit" class="btn btn-danger btn-sm">Cancelar Agendamento</button>
-                </form>
-                {% endif %}
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm {{ border_class }} border-3">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-primary">{{ appointment.servico.nome }}</h5>
+                <small class="text-muted">Agendamento #{{ appointment.id }}</small>
+            </div>
+            
+            <div class="card-body">
+                {# --- Detalhes do Agendamento (Layout de Duas Colunas) --- #}
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <p class="mb-1">
+                            <i class="fas fa-calendar-alt me-2 text-info"></i> 
+                            <span class="fw-bold">Data:</span> 
+                            <strong>{{ appointment.data_horario.strftime('%d/%m/%Y') }}</strong>
+                        </p>
+                    </div>
+                    <div class="col-6">
+                        <p class="mb-1">
+                            <i class="fas fa-clock me-2 text-info"></i> 
+                            <span class="fw-bold">Hora:</span> 
+                            <strong>{{ appointment.data_horario.strftime('%H:%M') }}</strong>
+                        </p>
+                    </div>
+                    <div class="col-6">
+                        <p class="mb-1">
+                            <i class="fas fa-hourglass-half me-2 text-muted"></i> 
+                            <span class="fw-bold">Duração:</span> 
+                            {{ appointment.servico.duracao_minutos }} min
+                        </p>
+                    </div>
+                    <div class="col-6">
+                        <p class="mb-1">
+                            <i class="fas fa-money-bill-wave me-2 text-success"></i> 
+                            <span class="fw-bold">Preço:</span> 
+                            R$ **{{ "%.2f"|format(appointment.servico.preco) }}**
+                        </p>
+                    </div>
+                </div>
+
+                <hr>
+
+                {# --- Status e Ações --- #}
+                <div class="d-flex justify-content-between align-items-center">
+                    
+                    {# Bloco de Status #}
+                    <div>
+                        <span class="fw-bold me-2">Status:</span>
+                        {% if appointment.status == 'Agendado' %}
+                            {% if appt_passed %}
+                                <span class="badge bg-danger p-2">Atrasado/Pendente</span> 
+                            {% else %}
+                                <span class="badge bg-success p-2">Confirmado</span>
+                            {% endif %}
+                        {% elif appointment.status == 'Cancelado' %}
+                            <span class="badge bg-secondary p-2">Cancelado</span>
+                        {% elif appointment.status == 'Reagendado' %}
+                            <span class="badge bg-warning text-dark p-2">Reagendado</span>
+                        {% elif appointment.status == 'Concluído' %}
+                            <span class="badge bg-primary p-2">Concluído</span>
+                        {% else %}
+                            <span class="badge bg-info p-2">{{ appointment.status }}</span>
+                        {% endif %}
+                    </div>
+                    
+                    {# Botão de Cancelar (Condicional) #}
+                    {% if appointment.status == 'Agendado' and not appt_passed %}
+                    <form method="POST" action="{{ url_for('services.cancel_appointment', appointment_id=appointment.id) }}" 
+                            style="display:inline;"
+                            onsubmit="return confirm('Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita e uma notificação será enviada.');">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                            <i class="fas fa-times-circle me-1"></i> Cancelar
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
     {% endfor %}
 </div>
 {% else %}
-<div class="alert alert-info">
-    Você ainda não possui agendamentos. <a href="{{ url_for('services.book_appointment') }}">Agende seu primeiro serviço!</a>
+<div class="alert alert-info alert-dismissible fade show shadow-sm" role="alert">
+    <i class="fas fa-info-circle me-2"></i> Você ainda não possui agendamentos. 
+    <a href="{{ url_for('services.book_appointment') }}" class="alert-link">Agende seu primeiro serviço!</a>
 </div>
 {% endif %}
 {% endblock %}

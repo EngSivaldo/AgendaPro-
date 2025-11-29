@@ -421,33 +421,47 @@ def edit_service(service_id):
     
     
 ## --- ROTA: DELETAR SERVIÇO (Admin) ---
+# app/services/routes.py (ou o arquivo onde esta rota está definida)
+
 @bp.route('/delete/<int:service_id>', methods=['POST'])
 @login_required
 @admin_required
 def delete_service(service_id):
-    """Permite ao administrador deletar um serviço existente."""
+    """Permite ao administrador deletar um serviço existente, se não houver agendamentos ATIVOS."""
     
+    # 1. Busca o serviço
     service = Service.query.get_or_404(service_id)
+    service_name = service.nome # Captura o nome para uso nas mensagens
     
-    # 📌 REGRAS DE NEGÓCIO: Verificação de Agendamentos Pendentes
-    has_appointments = Appointment.query.filter(
+    # 📌 REGRAS DE NEGÓCIO: Verificação de Agendamentos ATIVOS/CONCLUÍDOS
+    # Busca por qualquer agendamento com status que BLOQUEIA a exclusão
+    has_active_appointments = Appointment.query.filter(
         Appointment.service_id == service.id,
-        Appointment.status.in_(['Agendado', 'Concluído']) # Exclui Cancelados
+        Appointment.status.in_(['Agendado', 'Concluído'])
     ).first()
     
-    if has_appointments:
-        flash(f'Não é possível deletar o serviço "{service.nome}". Existem agendamentos associados.', 'danger')
-        return redirect(url_for('services.list_services'))
-
+    if has_active_appointments:
+        # Bloqueia a exclusão e envia mensagem instrutiva
+        # 💡 MELHORIA: A mensagem agora sugere a ação corretiva (cancelar/remover).
+        flash(f'ERRO: O serviço "{service_name}" não pode ser excluído. Existem agendamentos ativos ou concluídos ligados a ele. Cancele ou remova esses agendamentos primeiro.', 'danger')
+        # Presume que a listagem de serviços do Admin é a rota correta de retorno
+        return redirect(url_for('services.list_services')) # Mantido conforme seu pedido
+        
+    # Se não houver agendamentos ativos/concluídos
     try:
         db.session.delete(service)
         db.session.commit()
-        flash(f'Serviço "{service.nome}" removido permanentemente.', 'warning')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Erro ao deletar o serviço: {e}', 'danger')
         
-    return redirect(url_for('services.list_services'))
+        # 💡 MELHORIA: Mensagem clara de sucesso e permanentemente removido
+        flash(f'Serviço "{service_name}" removido permanentemente.', 'success') 
+        
+    except Exception as e:
+        # Tratamento de erro inesperado (ex: falha de conexão com DB)
+        db.session.rollback()
+        print(f"Erro detalhado no servidor ao deletar o serviço: {e}")
+        flash(f'Ocorreu um erro interno inesperado ao deletar o serviço "{service_name}".', 'danger')
+        
+    return redirect(url_for('services.list_services')) # Mantido conforme seu pedido
 
 
 ## --- ROTA: ATUALIZAR STATUS (Admin) ---
