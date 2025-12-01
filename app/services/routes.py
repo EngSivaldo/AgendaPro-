@@ -2,19 +2,21 @@ from functools import wraps
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
 from flask_login import login_required, current_user
 from app import db, mail
-# 💡 Importação de decorators movida para o topo
 from app.decorators import admin_required 
 from datetime import datetime, timedelta, date
-from app.models import Service, Appointment, User 
+from app.models import Service, Appointment, User # Assumindo que models estão aqui
 from sqlalchemy import or_, func, and_
-from sqlalchemy.exc import IntegrityError # 📌 NOVO: Importa para tratar erro de unicidade
+from sqlalchemy.exc import IntegrityError 
 from flask_mail import Message
 from app.tasks import send_appointment_reminder 
+# Importação garantida para a rota de faturamento
+from sqlalchemy import func
+
 
 # ----------------------------------------------------------------------
 # 📌 1. DEFINIÇÃO DO BLUEPRINT
 # ----------------------------------------------------------------------
-bp = Blueprint('services', __name__, url_prefix='/services') # Mantido o formato simplificado
+bp = Blueprint('services', __name__, url_prefix='/services')
 
 
 # ----------------------------------------------------
@@ -192,7 +194,7 @@ def api_available_slots():
 def book_appointment():
     """Permite ao cliente selecionar um serviço e agendar um horário."""
     
-    # 📌 ALTERADO: Filtra apenas serviços ATIVOS para clientes
+    # 📌 FILTRA apenas serviços ATIVOS para clientes
     services = Service.query.filter_by(is_active=True).all()
     
     if request.method == 'POST':
@@ -230,7 +232,6 @@ def book_appointment():
                 service_id=service_id,
                 data_horario=desired_start_time,
                 status='Agendado'
-                # created_at é definido automaticamente pelo modelo
             )
             
             db.session.add(new_appointment)
@@ -240,7 +241,7 @@ def book_appointment():
             new_appointment.user.email 
             new_appointment.servico.nome
             
-            # 5. Envio do Email de Confirmação Imediata
+            # 5. Envio do Email de Confirmação Imediata (Síncrono)
             send_appointment_email(
                 appointment=new_appointment, 
                 subject="Confirmação de Agendamento Realizado", 
@@ -248,20 +249,22 @@ def book_appointment():
             )
             
             # 6. AGENDAMENTO DO LEMBRETE CELERY (24 HORAS ANTES)
-            reminder_time = new_appointment.data_horario - timedelta(hours=24)
+            reminder_time = desired_start_time - timedelta(hours=24)
             
             if reminder_time > datetime.now():
+                countdown_seconds = (reminder_time - datetime.now()).total_seconds()
+                
                 send_appointment_reminder.apply_async(
                     args=[new_appointment.id], 
-                    eta=reminder_time 
+                    countdown=countdown_seconds # Agendado para 24 horas antes
                 )
-                flash_message = 'Agendamento realizado com sucesso! Um email de confirmação foi enviado e um lembrete foi agendado.'
+                flash_message = 'Agendamento realizado com sucesso! O lembrete será agendado (24h antes).'
             else:
-                flash_message = 'Agendamento realizado com sucesso! Um email de confirmação foi enviado.'
+                 flash_message = 'Agendamento realizado com sucesso! (Lembrete não agendado, pois está muito próximo ou no passado).'
             
             flash(flash_message, 'success')
             return redirect(url_for('services.my_appointments'))
-        
+            
         except Exception as e:
             db.session.rollback()
             print(f"Erro ao salvar agendamento: {e}")
@@ -288,8 +291,8 @@ def admin_dashboard():
 def my_appointments():
     """Visualiza todos os agendamentos do usuário logado."""
     appointments = Appointment.query.filter_by(user_id=current_user.id)\
-                                     .order_by(Appointment.data_horario.asc())\
-                                     .all()
+                                   .order_by(Appointment.data_horario.asc())\
+                                   .all()
     
     return render_template('services/my_appointments.html', 
                            title='Meus Agendamentos', 
@@ -345,7 +348,7 @@ def cancel_appointment(appointment_id):
 @admin_required
 def list_services():
     """Visualiza todos os serviços cadastrados (ativos e inativos) (Apenas Admin)"""
-    # 📌 REVISÃO: O Admin vê TODOS os serviços para gerenciar o status 'is_active'
+    # 📌 O Admin vê TODOS os serviços para gerenciar o status 'is_active'
     services = Service.query.order_by(Service.is_active.desc(), Service.nome.asc()).all()
     
     return render_template('services/list.html', title='Gerenciar Serviços', services=services)
@@ -362,6 +365,7 @@ def create_service():
         descricao = request.form.get('descricao')
         
         try:
+            # Lógica robusta de conversão numérica
             preco_str = request.form.get('preco').replace(',', '.') 
             preco = float(preco_str) 
             duracao_minutos = int(request.form.get('duracao_minutos'))
@@ -379,7 +383,7 @@ def create_service():
             descricao=descricao,
             preco=preco,
             duracao_minutos=duracao_minutos,
-            is_active=True # 📌 NOVO: Garantindo que novos serviços sejam ativos
+            is_active=True # Novos serviços são ativos por padrão
         )
         
         try:
@@ -388,13 +392,13 @@ def create_service():
             
             flash(f'Serviço "{nome}" criado com sucesso!', 'success')
             return redirect(url_for('services.list_services'))
-        
+            
         # 📌 TRATAMENTO DE ERRO: Captura erro de unicidade (nome duplicado)
         except IntegrityError:
             db.session.rollback()
             flash(f'O nome do serviço "{nome}" já existe. Por favor, escolha um nome diferente.', 'danger')
             return redirect(url_for('services.create_service'))
-        
+            
         except Exception as e:
             db.session.rollback()
             print(f"Erro ao salvar serviço: {e}")
@@ -443,7 +447,7 @@ def edit_service(service_id):
                 flash('O preço deve ser positivo e a duração deve ser maior que zero.', 'danger')
                 return redirect(url_for('services.edit_service', service_id=service.id))
             
-            # 📌 NOVO: Captura o valor do checkbox 'is_active'
+            # 📌 Captura o valor do checkbox 'is_active'
             service.is_active = 'is_active' in request.form 
             
         except (ValueError, TypeError): 
@@ -479,31 +483,66 @@ def edit_service(service_id):
                            service=service)
     
     
-## --- ROTA: DELETAR SERVIÇO (Admin) ---
+## --- ROTA: DESATIVAR/SOFT DELETE SERVIÇO (Admin) ---
 @bp.route('/delete/<int:service_id>', methods=['POST'])
 @login_required
 @admin_required
 def delete_service(service_id):
-    """Permite ao administrador DESATIVAR (Soft Delete) um serviço."""
+    """Permite ao administrador DESATIVAR (Soft Delete) um serviço. (Chamado via rota delete)"""
+    return redirect(url_for('services.deactivate_service', service_id=service_id)) # Redireciona para a rota específica de desativação
+
+@bp.route('/service/deactivate/<int:service_id>', methods=['POST'])
+@login_required
+@admin_required
+def deactivate_service(service_id):
+    """Desativa um serviço (Soft Delete) definindo is_active=False."""
     
-    service = Service.query.get_or_404(service_id)
-    service_name = service.nome
+    # 1. Busca o serviço pelo ID
+    service = db.session.get(Service, service_id)
+
+    if service is None:
+        flash('Serviço não encontrado.', 'danger')
+        return redirect(url_for('services.list_services'))
+
+    if not service.is_active:
+        flash('O serviço já está inativo.', 'info')
+        return redirect(url_for('services.list_services'))
+
+    # 2. Desativa o serviço
+    service.is_active = False
     
-    # 📌 ALTERAÇÃO: Implementação do Soft Delete
-    try:
-        # A regra de negócio anterior de verificar agendamentos ativos/concluídos
-        # pode ser simplificada, pois agora estamos apenas DESATIVANDO.
-        # NENHUM DADO SERÁ PERDIDO.
-        service.is_active = False 
-        db.session.commit()
-        
-        flash(f'Serviço "{service_name}" desativado (Soft Delete) com sucesso. Ele não será mais exibido para novos agendamentos.', 'success') 
-        
-    except Exception as e:
-        db.session.rollback()
-        print(f"Erro detalhado no servidor ao desativar o serviço: {e}")
-        flash(f'Ocorreu um erro interno inesperado ao desativar o serviço "{service_name}".', 'danger')
-        
+    # 3. Commit
+    db.session.commit()
+    flash(f'Serviço "{service.nome}" desativado (Soft Delete) com sucesso. Ele não será mais exibido para novos agendamentos.', 'success')
+    
+    return redirect(url_for('services.list_services'))
+
+
+## --- ROTA: ATIVAR SERVIÇO (Admin) ---
+@bp.route('/service/activate/<int:service_id>', methods=['POST'])
+@login_required
+@admin_required
+def activate_service(service_id):
+    """Reativa um serviço definindo is_active=True."""
+    
+    # 1. Busca o serviço pelo ID
+    service = db.session.get(Service, service_id)
+
+    if service is None:
+        flash('Serviço não encontrado.', 'danger')
+        return redirect(url_for('services.list_services'))
+
+    if service.is_active:
+        flash('O serviço já está ativo.', 'info')
+        return redirect(url_for('services.list_services'))
+
+    # 2. Reativa o serviço
+    service.is_active = True
+    
+    # 3. Commit
+    db.session.commit()
+    flash(f'Serviço "{service.nome}" reativado com sucesso.', 'success')
+    
     return redirect(url_for('services.list_services'))
 
 
@@ -514,11 +553,13 @@ def delete_service(service_id):
 def update_appointment_status(appointment_id):
     
     appointment = Appointment.query.get_or_404(appointment_id)
-    new_status = request.form.get('status')
+    
+    # 🚨 CORRIGIDO: Use 'status' para pegar o valor do formulário
+    new_status = request.form.get('status') 
     valid_statuses = ['Agendado', 'Concluído', 'Cancelado', 'Reagendado']
     
     if new_status not in valid_statuses:
-        flash('Status inválido.', 'danger')
+        flash('Status inválido fornecido.', 'danger')
         return redirect(url_for('services.manage_appointments'))
 
     old_status = appointment.status 
@@ -527,6 +568,24 @@ def update_appointment_status(appointment_id):
         flash('Status inalterado.', 'info')
         return redirect(url_for('services.manage_appointments'))
 
+    # ----------------------------------------------------
+    # 📌 NOVA REGRA DE NEGÓCIO: Conclusão de Serviço Futuro
+    # Garante que a data_horario seja o momento atual se for concluído.
+    # ----------------------------------------------------
+    flash_message_override = None
+
+    if new_status == 'Concluído':
+        now = datetime.now()
+        
+        if appointment.data_horario > now:
+            # Altera a data agendada para o momento da conclusão (hoje)
+            appointment.data_horario = now
+            
+            flash_message_override = (
+                f"Status do Agendamento ID {appointment_id} alterado para **Concluído**. "
+                f"A data original ({old_status}) foi atualizada para a data e hora atuais para fins de faturamento."
+            )
+        
     try:
         appointment.status = new_status
         db.session.commit() 
@@ -538,7 +597,11 @@ def update_appointment_status(appointment_id):
             status=new_status
         )
         
-        flash(f'Status do agendamento atualizado para "{new_status}" e cliente notificado.', 'success')
+        # Usa a mensagem de aviso se a data foi alterada
+        if flash_message_override:
+            flash(flash_message_override, 'warning')
+        else:
+            flash(f'Status do agendamento atualizado para "{new_status}" e cliente notificado.', 'success')
         
     except Exception as e:
         db.session.rollback()
@@ -593,6 +656,15 @@ def reschedule_appointment(appointment_id):
             status='Reagendado'
         )
         
+        # 📌 Reagendar o lembrete Celery, se necessário
+        reminder_time = new_datetime - timedelta(hours=24)
+        if reminder_time > datetime.now():
+            countdown_seconds = (reminder_time - datetime.now()).total_seconds()
+            send_appointment_reminder.apply_async(
+                args=[appointment.id], 
+                countdown=countdown_seconds
+            )
+        
         flash(f'Agendamento #{appointment.id} reagendado com sucesso para {new_datetime.strftime("%d/%m/%Y às %H:%M")} e cliente notificado.', 'success')
     except Exception as e:
         db.session.rollback()
@@ -602,7 +674,7 @@ def reschedule_appointment(appointment_id):
     return redirect(url_for('services.manage_appointments'))
 
 
-# Rota para o Relatório de Faturamento
+## --- Rota para o Relatório de Faturamento (Admin) ---
 @bp.route('/admin/reports/billing', methods=['GET'])
 @login_required
 @admin_required
@@ -612,51 +684,51 @@ def billing_report():
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
     
-    query = Appointment.query.filter_by(status='Concluído')
-    
-    # --- Lógica de Filtro Padrão (Mês Atual) ---
+    # --- 1. Determinação do Período (Padrão: Mês Atual) ---
     today = date.today()
-    start_of_month = datetime(today.year, today.month, 1)
     
-    try:
-        # Tenta ir para o dia 1 do próximo mês e subtrai 1 segundo
-        end_of_month = datetime(today.year, today.month + 1, 1) - timedelta(seconds=1) 
-    except ValueError:
-        # Se for Dezembro
-        end_of_month = datetime(today.year + 1, 1, 1) - timedelta(seconds=1)
-
-    # Valores padrão para a query (Mês Atual)
-    start_date_filter = start_of_month
-    end_date_filter = end_of_month
-    
-    # 1. Lógica do Período (Filtro do Usuário)
-    if start_date_str and end_date_str:
+    # 📌 Se datas NÃO FORAM fornecidas pelo usuário, usa o Mês Atual como padrão
+    if not start_date_str or not end_date_str:
+        start_date_filter = datetime(today.year, today.month, 1)
+        
+        try:
+            # Fim do mês (garante que inclui o dia 30, 31, etc.)
+            end_date_filter = datetime(today.year, today.month + 1, 1) - timedelta(seconds=1) 
+        except ValueError:
+            end_date_filter = datetime(today.year + 1, 1, 1) - timedelta(seconds=1)
+            
+    # 📌 Se datas FORAM fornecidas pelo usuário
+    else:
         try:
             start_date_obj = datetime.strptime(start_date_str, '%Y-%m-%d')
             end_date_obj = datetime.strptime(end_date_str, '%Y-%m-%d')
             
-            # Ajusta para incluir o dia inteiro
-            end_datetime = datetime.combine(end_date_obj.date(), datetime.max.time())
-            
-            # Sobrescreve os filtros
+            # Ajusta para incluir o dia inteiro (até 23:59:59)
             start_date_filter = start_date_obj
-            end_date_filter = end_datetime
+            end_date_filter = datetime.combine(end_date_obj.date(), datetime.max.time())
             
         except ValueError:
             flash('Formato de data inválido.', 'danger')
             return redirect(url_for('services.billing_report'))
             
-    # Filtra a Query com base nos filtros definidos (padrão ou pelo usuário)
-    query = query.filter(Appointment.data_horario >= start_date_filter,
-                         Appointment.data_horario <= end_date_filter)
-
-    # 2. Execução da Consulta
-    completed_appointments = query.all()
-
-    # 3. Cálculo do Faturamento
-    total_revenue = sum(appt.servico.preco for appt in completed_appointments)
+    # 2. Construção da Query Base
+    # Query que filtra apenas por 'Concluído'
+    base_filter = [Appointment.status == 'Concluído']
     
-    # 4. Retorno: Passa as datas formatadas para os inputs HTML
+    # Adiciona o filtro de data/hora (que agora contém a data de conclusão, se alterada)
+    base_filter.append(Appointment.data_horario >= start_date_filter)
+    base_filter.append(Appointment.data_horario <= end_date_filter)
+
+    # 3. Execução do Cálculo SQL
+    # Usa select_from(Appointment).join(Service) para resolver a ambiguidade do JOIN.
+    total_revenue_query = db.session.query(func.sum(Service.preco)).select_from(Appointment).join(Service).filter(*base_filter)
+    total_revenue = total_revenue_query.scalar() or 0.00
+    
+    # 4. Busca dos Agendamentos Detalhados
+    appointments_query = Appointment.query.join(Service).filter(*base_filter).order_by(Appointment.data_horario.desc()) 
+    completed_appointments = appointments_query.all()
+    
+    # 5. Retorno
     return render_template('services/billing_report.html', 
                            title='Relatório de Faturamento',
                            total_revenue=total_revenue,
@@ -665,20 +737,3 @@ def billing_report():
                            end_date=end_date_filter.strftime('%Y-%m-%d'),
                            datetime=datetime 
                            )
-    
-    
-# app/utils/decorators.py
-
-from functools import wraps
-from flask import flash, redirect, url_for
-from flask_login import current_user
-
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_admin:
-            flash('Acesso restrito a administradores.', 'danger')
-            # 📌 Garante que o usuário seja redirecionado para a página inicial
-            return redirect(url_for('main.index')) 
-        return f(*args, **kwargs)
-    return decorated_function

@@ -46,8 +46,14 @@ class Config:
     
 # Chave ANTIGA (Causa do erro): CELERY_BROKER_URL
 # Chave NOVA (CORRETA): broker_url
-broker_url = os.environ.get('CELERY_BROKER_URL') or 'redis://localhost:6379/0' # Mantenha a variável de ambiente antiga por segurança
+    broker_url = os.environ.get('CELERY_BROKER_URL') or 'redis://localhost:6379/0' # Mantenha a variável de ambiente antiga por segurança
 
-# Chave ANTIGA (Causa do erro): CELERY_RESULT_BACKEND
-# Chave NOVA (CORRETA): result_backend
-result_backend = os.environ.get('CELERY_RESULT_BACKEND') or 'redis://localhost:6379/0' # Mantenha a variável de ambiente antiga por segurança
+    # Chave ANTIGA (Causa do erro): CELERY_RESULT_BACKEND
+    # Chave NOVA (CORRETA): result_backend
+    result_backend = os.environ.get('CELERY_RESULT_BACKEND') or 'redis://localhost:6379/0' # Mantenha a variável de ambiente antiga por segurança
+    
+    # Adicione ESTA LINHA para que o Celery carregue o módulo de tarefas
+    CELERY_IMPORTS = ('app.tasks',)
+
+    broker_url = os.environ.get('CELERY_BROKER_URL') or 'redis://localhost:6379/0' 
+    result_backend = os.environ.get('CELERY_RESULT_BACKEND') or 'redis://localhost:6379/0'

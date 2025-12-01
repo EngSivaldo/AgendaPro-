@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    /* Variáveis de Cor FlyingDonut */
+    :root {
+        --color-dark: #2F3640;
+        --color-teal: #1ABC9C;
+        --color-pink: #FF4757;
+    }
+
+    /* Estilos da Página de Documentação */
+    .doc-container {
+        max-width: 900px;
+        margin-top: 5rem;
+        margin-bottom: 5rem;
+    }
+    .doc-header h1 {
+        font-weight: 800;
+        color: var(--color-dark);
+        border-bottom: 3px solid var(--color-teal);
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .doc-section h2 {
+        font-weight: 700;
+        color: var(--color-teal);
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        padding-left: 10px;
+        border-left: 5px solid var(--color-pink); /* Destaque em Pink */
+    }
+    .doc-section p, .doc-section li {
+        color: #555;
+        line-height: 1.8;
+        font-size: 1.05rem;
+    }
+    .doc-section ul {
+        list-style-type: none;
+        padding-left: 0;
+    }
+    .doc-section ul li:before {
+        content: "\2022"; /* Bullet point */
+        color: var(--color-pink);
+        font-weight: bold;
+        display: inline-block; 
+        width: 1em;
+        margin-left: -1em;
+    }
+
+</style>
+
+<div class="container doc-container">
+
+    <div class="doc-header text-center">
+        <h1>Termos de Uso do Serviço</h1>
+        <p class="lead text-muted">Última atualização: 01 de Dezembro de 2025</p>
+    </div>
+    
+    <div class="doc-content">
+        
+        <div class="doc-section">
+            <h2>1. Aceitação dos Termos</h2>
+            <p>
+                Ao acessar e utilizar o serviço **FlyD** (o "Serviço"), você concorda em se submeter a estes Termos de Uso. Se você discordar de qualquer parte dos termos, não deverá utilizar o Serviço. Estes Termos aplicam-se a todos os visitantes, usuários e outros que acessem ou usem o Serviço.
+            </p>
+        </div>
+
+        <div class="doc-section">
+            <h2>2. Contas de Usuário</h2>
+            <p>
+                Ao criar uma conta conosco, você deve nos fornecer informações que sejam precisas, completas e atuais. O não cumprimento constitui uma violação dos Termos. Você é responsável por salvaguardar a senha que usa para acessar o Serviço e por quaisquer atividades ou ações sob sua senha.
+            </p>
+        </div>
+
+        <div class="doc-section">
+            <h2>3. Propriedade Intelectual</h2>
+            <p>
+                O Serviço e seu conteúdo original, recursos e funcionalidade são e continuarão sendo propriedade exclusiva de **FlyD** e seus licenciadores. O Serviço é protegido por direitos autorais, marcas registradas e outras leis do Brasil e de países estrangeiros.
+            </p>
+        </div>
+
+        <div class="doc-section">
+            <h2>4. Restrições de Uso</h2>
+            <p>Você concorda em não:</p>
+            <ul>
+                <li>Reproduzir, duplicar ou copiar qualquer parte do Serviço sem nossa permissão expressa por escrito.</li>
+                <li>Usar o Serviço de qualquer maneira que possa danificar, desabilitar, sobrecarregar ou prejudicar o site.</li>
+                <li>Tentar obter acesso não autorizado a sistemas ou redes conectadas ao Serviço.</li>
+            </ul>
+        </div>
+
+        <div class="doc-section">
+            <h2>5. Lei Aplicável</h2>
+            <p>
+                Estes Termos serão regidos e interpretados de acordo com as leis do Brasil, sem levar em consideração suas disposições sobre conflitos de leis.
+            </p>
+        </div>
+        
+        <div class="alert alert-info mt-5" role="alert" style="border-left: 5px solid var(--color-teal);">
+            <i class="fas fa-info-circle me-2" style="color: var(--color-teal);"></i> 
+            Para dúvidas sobre estes Termos, entre em contato através do nosso email de suporte.
+        </div>
+        
+    </div>
+
+</div>
+
+{% endblock %}

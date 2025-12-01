@@ -1,26 +1,30 @@
 # app/__init__.py
 
-from flask import Flask, render_template
+from flask import Flask, render_template # Removendo render_template daqui, não é usado na função
 from celery import Celery 
 from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate  # 📌 NOVIDADE: Importação do Migrate
+from flask_migrate import Migrate
 from flask_login import LoginManager
 import os
 from flask_mail import Mail
-# Importa a classe Config do arquivo config.py
 from .config import Config 
-
+from flask_moment import Moment 
 
 # ===============================================
-# 1. INSTÂNCIAS GLOBAIS (Disponíveis para os Models)
+# 1. INSTÂNCIAS GLOBAIS
 # ===============================================
 
-celery = Celery(__name__) 
+celery = Celery(
+    __name__, 
+    broker=Config.broker_url,
+    result_backend=Config.result_backend 
+)
 
 db = SQLAlchemy()
-migrate = Migrate()  # 📌 NOVIDADE: Instância global para o Flask-Migrate
-login = LoginManager() # 📌 ALTERAÇÃO: Renomeado de login_manager para login
+migrate = Migrate()
+login = LoginManager()
 mail = Mail() 
+moment = Moment() # Inicialização da instância Moment
 
 def create_app(config_class=Config):
     # Cria a instância da aplicação Flask
@@ -36,17 +40,21 @@ def create_app(config_class=Config):
 
     # --- Inicialização das Extensões com a App ---
     db.init_app(app)
-    migrate.init_app(app, db) # 📌 NOVIDADE: Inicialização do Flask-Migrate
+    migrate.init_app(app, db)
     login.init_app(app) 
     mail.init_app(app) 
+    moment.init_app(app) # Inicializa Flask-Moment
     
     
     # ===============================================
     # 2. CONFIGURAÇÃO DO CELERY COM CONTEXTO
     # ===============================================
     
-    # Configura o Celery com as configurações do Flask (incluindo broker_url)
+    # Configura o Celery com as configurações do Flask
     celery.conf.update(app.config)
+    
+    # Importar o módulo tasks AQUI garante que as tarefas sejam registradas,
+    # quebrando o ciclo de importação e resolvendo o erro 'KeyError'.
     
     # Cria uma classe base para tarefas que injeta o contexto da aplicação Flask
     class ContextTask(celery.Task):
@@ -74,8 +82,6 @@ def create_app(config_class=Config):
     # 4. REGISTRO DE BLUEPRINTS E ROTAS
     # ===============================================
     
-    # 📌 ALTERAÇÃO: A importação do blueprint 'app.main' foi removida para resolver o erro.
-    
     # Importa e registra o Blueprint de Autenticação
     from app.auth.routes import bp as auth_bp
     app.register_blueprint(auth_bp, url_prefix='/auth') 
@@ -84,10 +90,12 @@ def create_app(config_class=Config):
     from app.services.routes import bp as services_bp 
     app.register_blueprint(services_bp, url_prefix='/services')
     
-    # Rotas principais (RAIZ) - Retornada para o __init__.py até que o Blueprint 'main' seja criado
-    @app.route('/')
-    def index():
-        return render_template('index.html', title='Início')
+    # NOVO: Importa e registra o Blueprint Principal (main)
+    # ESTE PASSO É CRUCIAL PARA ENCONTRAR main.terms
+    from app.main.routes import bp as main_bp # Assumindo que você usa 'bp' em app/main/routes.py
+    app.register_blueprint(main_bp)
+
+    # REMOVIDO: @app.route('/') - A rota index deve estar em app/main/routes.py agora.
 
 
     # ===============================================

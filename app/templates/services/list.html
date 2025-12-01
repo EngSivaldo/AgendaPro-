@@ -1,45 +1,138 @@
-
 {% extends "base.html" %}
 
 {% block content %}
-<h1 class="mt-4">Gerenciamento de Serviços</h1>
-<p><a href="{{ url_for('services.create_service') }}" class="btn btn-primary">Adicionar Novo Serviço</a></p>
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Nome</th>
-            <th>Preço</th>
-            <th>Duração (min)</th>
-            <th>Descrição</th>
-            <th>Ações</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for service in services %}
-        <tr>
-            <td>{{ service.nome }}</td>
-            <td>R$ {{ "%.2f"|format(service.preco) }}</td>
-            <td>{{ service.duracao_minutos }}</td>
-            <td>{{ service.descricao or 'N/A' }}</td>
-            <td>
-                <a href="{{ url_for('services.edit_service', service_id=service.id) }}" class="btn btn-sm btn-info me-2">
-                    <i class="fas fa-edit"></i> Editar
-                </a>
-                <form method="POST" action="{{ url_for('services.delete_service', service_id=service.id) }}" style="display:inline;">
-                    <button type="submit" class="btn btn-sm btn-danger" 
-                            onclick="return confirm('ATENÇÃO: Deseja realmente remover o serviço {{ service.nome }}? Esta ação é irreversível e pode exigir a remoção de agendamentos associados.');">
-                        <i class="fas fa-trash"></i> Excluir
-                    </button>
-                </form>
-            </td>
-        </tr>
-        {% else %}
-        <tr>
-            <td colspan="5">Nenhum serviço cadastrado ainda.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
+<style>
+    /* Estilos Específicos para a Listagem de Serviços */
     
-</table>
+    /* Título Principal */
+    .services-header h1 {
+        font-weight: 800;
+        color: var(--dark-navy) !important;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+    .services-header h1 i {
+        color: var(--primary-teal); /* Ícone principal em Teal */
+    }
+
+    /* Botão de Ação Principal (Adicionar Novo Serviço) */
+    .btn-add-service {
+        background-color: var(--accent-pink);
+        border-color: var(--accent-pink);
+        color: white;
+        font-weight: 700;
+        border-radius: 50px; /* Pilular */
+        padding: 0.6rem 1.5rem;
+        box-shadow: 0 4px 10px rgba(255, 107, 129, 0.4);
+        transition: all 0.2s ease-in-out;
+    }
+    .btn-add-service:hover {
+        background-color: #f75c70;
+        border-color: #f75c70;
+        transform: translateY(-1px);
+    }
+
+    /* Tabela Customizada (Mais limpa) */
+    .table-custom {
+        border-radius: 12px;
+        overflow: hidden; /* Garante que o rounded corner funcione com o thead */
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    .table-custom thead tr {
+        background-color: var(--dark-navy);
+        color: var(--text-on-dark);
+        font-weight: 600;
+    }
+    .table-custom tbody tr:hover {
+        background-color: #f7f9fb; /* Hover sutil no corpo */
+    }
+    
+    /* Estilo para Preço */
+    .service-price {
+        font-weight: 700;
+        color: var(--dark-navy);
+    }
+    
+    /* Botões de Ação na Tabela */
+    .btn-edit-teal {
+        background-color: var(--primary-teal);
+        border-color: var(--primary-teal);
+        color: white;
+        transition: all 0.2s;
+    }
+    .btn-edit-teal:hover {
+        background-color: #00A396;
+        border-color: #00A396;
+    }
+
+    .btn-delete-pink {
+        background-color: var(--accent-pink);
+        border-color: var(--accent-pink);
+        color: white;
+        transition: all 0.2s;
+    }
+    .btn-delete-pink:hover {
+        background-color: #E65A70;
+        border-color: #E65A70;
+    }
+</style>
+
+<div class="services-header mt-4 mb-4">
+    <h1 class="display-5"><i class="fas fa-tags me-2"></i> Gerenciamento de Serviços</h1>
+    <p class="lead" style="color: var(--text-default);">Defina os preços, duração e descrição dos serviços disponíveis para agendamento.</p>
+</div>
+
+<div class="mb-4">
+    <a href="{{ url_for('services.create_service') }}" class="btn btn-add-service">
+        <i class="fas fa-plus-circle me-1"></i> Adicionar Novo Serviço
+    </a>
+</div>
+
+<div class="table-responsive table-custom">
+    <table class="table table-striped table-hover align-middle mb-0">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th class="text-end">Preço</th>
+                <th class="text-center">Duração (min)</th>
+                <th>Descrição</th>
+                <th class="text-center">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for service in services %}
+            <tr>
+                <td><strong style="color: var(--dark-navy);">{{ service.nome }}</strong></td>
+                <td class="text-end service-price">R$ {{ "%.2f"|format(service.preco) }}</td>
+                <td class="text-center">{{ service.duracao_minutos }}</td>
+                <td>{{ service.descricao or '<span class="text-muted fst-italic">Sem descrição</span>' }}</td>
+                <td class="text-center">
+                    {# Botão Editar em Teal #}
+                    <a href="{{ url_for('services.edit_service', service_id=service.id) }}" class="btn btn-sm btn-edit-teal me-2">
+                        <i class="fas fa-edit"></i> Editar
+                    </a>
+                    
+                    {# Botão Excluir em Pink #}
+                    <form method="POST" action="{{ url_for('services.delete_service', service_id=service.id) }}" style="display:inline;">
+                        <button type="submit" class="btn btn-sm btn-delete-pink" 
+                                onclick="return confirm('ATENÇÃO: Deseja realmente remover o serviço {{ service.nome }}? Esta ação é irreversível e pode exigir a remoção de agendamentos associados.');">
+                            <i class="fas fa-trash"></i> Excluir
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" class="text-center p-4">
+                    <div class="alert alert-info fw-bold mb-0">
+                        <i class="fas fa-info-circle me-2"></i> Nenhum serviço cadastrado ainda. Use o botão acima para começar.
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        
+    </table>
+</div>
 {% endblock %}

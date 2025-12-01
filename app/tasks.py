@@ -1,7 +1,7 @@
 # app/tasks.py
 
 # Importa a instância Celery, Mail e DB que definimos em app/__init__.py
-from app import celery, mail, db 
+from app.__init__ import celery, mail, db
 from flask_mail import Message
 # Importa o modelo de Agendamento (Appointment) e outros que você usa para obter o cliente
 from app.models import Appointment, User 

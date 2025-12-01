@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    /* Variáveis de Cor FlyingDonut */
+    :root {
+        --color-dark: #2F3640; /* Cor Principal do Texto/Tabela Header */
+        --color-teal: #1ABC9C; /* Teal (Ação Principal/Informação Positiva) */
+        --color-pink: #FF4757; /* Pink (Ação Crítica/Alerta de Admin) */
+    }
+    
+    /* Título Principal */
+    .admin-header h1 {
+        font-weight: 800;
+        color: var(--color-dark);
+    }
+    .admin-header h1 i {
+        color: var(--color-teal); /* Ícone principal em Teal */
+    }
+
+    /* Botão de Ação (Adicionar Cliente) */
+    .btn-add-client {
+        background-color: var(--color-teal);
+        border-color: var(--color-teal);
+        color: white;
+        font-weight: 600;
+        border-radius: 50px;
+        padding: 0.5rem 1.2rem;
+        transition: all 0.2s;
+    }
+    .btn-add-client:hover {
+        background-color: #16A085;
+        border-color: #16A085;
+    }
+
+    /* Card da Tabela */
+    .card-users-list {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+    .card-users-list .card-header {
+        background-color: var(--color-dark) !important;
+        color: white;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+
+    /* Tabela Customizada */
+    .table-users thead th {
+        background-color: var(--color-dark) !important;
+        color: #f8f9fa;
+        border-bottom: 2px solid var(--color-teal);
+        font-weight: 600;
+    }
+    .table-users tbody tr:hover {
+        background-color: #f7f9fb;
+    }
+
+    /* Status Badges */
+    .badge-admin {
+        background-color: var(--color-pink) !important;
+        color: white;
+        font-size: 0.85rem;
+    }
+    .badge-client {
+        background-color: var(--color-teal) !important;
+        color: white;
+        font-size: 0.85rem;
+    }
+    
+    /* Botões de Ação na Tabela */
+    .btn-edit {
+        background-color: #7994A8; /* Cinza Neutro para Editar */
+        border-color: #7994A8;
+        color: white;
+        border-radius: 5px;
+    }
+    .btn-delete {
+        background-color: var(--color-pink);
+        border-color: var(--color-pink);
+        color: white;
+        border-radius: 5px;
+    }
+</style>
+
+<div class="container mt-5">
+    
+    <div class="d-flex justify-content-between align-items-center admin-header mb-4">
+        <h1 class="display-6 fw-bold">
+            <i class="fas fa-users-cog me-2"></i> Gerenciamento de Usuários
+        </h1>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-add-client">
+            <i class="fas fa-user-plus me-1"></i> Adicionar Cliente
+        </a>
+    </div>
+
+    <p class="lead text-muted mb-4">Visualize e gerencie as contas de acesso ao sistema.</p>
+
+    <div class="card card-users-list">
+        <div class="card-header">
+            <i class="fas fa-list-ul me-1"></i> Lista Completa de Usuários
+        </div>
+        <div class="card-body p-0">
+            
+            <div class="table-responsive">
+                <table class="table table-users table-striped table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th scope="col">ID</th>
+                            <th scope="col">Nome</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {# Loop que itera sobre a lista de 'users' #}
+                        {% for user in users %}
+                        <tr>
+                            <th scope="row" class="text-muted">{{ user.id }}</th>
+                            <td>
+                                <i class="fas fa-user-circle me-1" style="color: var(--color-teal);"></i> 
+                                <span class="fw-semibold" style="color: var(--color-dark);">{{ user.nome }}</span>
+                            </td>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                {% if user.is_admin %}
+                                    <span class="badge badge-admin p-2">
+                                        <i class="fas fa-shield-alt"></i> Administrador
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge-client p-2">
+                                        <i class="fas fa-user-tag"></i> Cliente
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {# Botão Editar #}
+                                <a href="{{ url_for('auth.edit_user', user_id=user.id) }}" class="btn btn-sm btn-edit me-2">
+                                    <i class="fas fa-edit"></i> Editar
+                                </a>
+                                
+                                {# Botão Deletar #}
+                                <form action="{{ url_for('auth.delete_user', user_id=user.id) }}" method="POST" class="d-inline"
+                                    onsubmit="return confirm('ATENÇÃO: Tem certeza que deseja deletar o usuário {{ user.nome }}? Esta ação é irreversível.');">
+                                    <button type="submit" class="btn btn-sm btn-delete">
+                                        <i class="fas fa-trash-alt"></i> Deletar
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 bg-light">
+                                <i class="fas fa-info-circle me-1 text-muted"></i> Nenhum usuário cadastrado.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+    
+</div>
+
+{% endblock %}

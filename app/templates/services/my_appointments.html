@@ -1,115 +1,201 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1 class="mt-4"><i class="fas fa-calendar-check me-2 text-info"></i> Meus Agendamentos</h1>
-<p class="mb-4">Gerencie todos os seus serviços agendados conosco.</p>
 
-<p><a href="{{ url_for('services.book_appointment') }}" class="btn btn-primary">
-    <i class="fas fa-plus-circle me-1"></i> Fazer Novo Agendamento
-</a></p>
-
-{% if appointments %}
-<div class="row">
-    {% for appointment in appointments %}
-    {% set appt_passed = appointment.data_horario < now() %}
+<style>
+    /* Estilos Específicos para a Lista de Agendamentos do Cliente */
     
-    {# Define a classe da borda para destaque visual #}
-    {% set border_class = 'border-success' %}
-    {% if appointment.status == 'Cancelado' %}
-        {% set border_class = 'border-secondary' %}
-    {% elif appointment.status == 'Concluído' %}
-        {% set border_class = 'border-primary' %}
-    {% elif appointment.status == 'Reagendado' %}
-        {% set border_class = 'border-warning' %}
-    {% elif appt_passed %}
-        {% set border_class = 'border-danger' %}
-    {% endif %}
+    /* Título Principal */
+    .client-header h1 {
+        font-weight: 800;
+        color: var(--dark-navy) !important;
+        letter-spacing: 0.5px;
+    }
+    .client-header h1 i {
+        color: var(--primary-teal); /* Ícone principal em Teal */
+    }
 
-    <div class="col-md-6 mb-4">
-        <div class="card shadow-sm {{ border_class }} border-3">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 text-primary">{{ appointment.servico.nome }}</h5>
-                <small class="text-muted">Agendamento #{{ appointment.id }}</small>
-            </div>
-            
-            <div class="card-body">
-                {# --- Detalhes do Agendamento (Layout de Duas Colunas) --- #}
-                <div class="row mb-3">
-                    <div class="col-6">
-                        <p class="mb-1">
-                            <i class="fas fa-calendar-alt me-2 text-info"></i> 
-                            <span class="fw-bold">Data:</span> 
-                            <strong>{{ appointment.data_horario.strftime('%d/%m/%Y') }}</strong>
-                        </p>
-                    </div>
-                    <div class="col-6">
-                        <p class="mb-1">
-                            <i class="fas fa-clock me-2 text-info"></i> 
-                            <span class="fw-bold">Hora:</span> 
-                            <strong>{{ appointment.data_horario.strftime('%H:%M') }}</strong>
-                        </p>
-                    </div>
-                    <div class="col-6">
-                        <p class="mb-1">
-                            <i class="fas fa-hourglass-half me-2 text-muted"></i> 
-                            <span class="fw-bold">Duração:</span> 
-                            {{ appointment.servico.duracao_minutos }} min
-                        </p>
-                    </div>
-                    <div class="col-6">
-                        <p class="mb-1">
-                            <i class="fas fa-money-bill-wave me-2 text-success"></i> 
-                            <span class="fw-bold">Preço:</span> 
-                            R$ **{{ "%.2f"|format(appointment.servico.preco) }}**
-                        </p>
-                    </div>
-                </div>
+    /* Botão de Ação Principal (Novo Agendamento) */
+    .btn-book-new {
+        background-color: var(--accent-pink);
+        border-color: var(--accent-pink);
+        color: white;
+        font-weight: 700;
+        border-radius: 50px;
+        padding: 0.8rem 1.8rem;
+        box-shadow: 0 6px 15px rgba(255, 107, 129, 0.4);
+        transition: all 0.2s ease-in-out;
+    }
+    .btn-book-new:hover {
+        background-color: #f75c70;
+        border-color: #f75c70;
+        transform: translateY(-2px);
+    }
+    
+    /* Tabela Customizada */
+    .table-custom-client {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+    .table-custom-client thead {
+        background-color: var(--dark-navy) !important;
+        color: var(--text-on-dark);
+        font-weight: 600;
+    }
+    .table-custom-client thead th {
+        border-bottom: none;
+    }
+    .table-custom-client tbody tr:hover {
+        background-color: #f7f9fb; /* Hover sutil */
+    }
 
-                <hr>
+    /* Estilos para Status Badges */
+    .status-badge-client {
+        font-size: 0.85rem;
+        font-weight: 600;
+        padding: 0.4em 0.8em;
+        border-radius: 50px;
+    }
+    
+    /* Cores Temáticas para Status */
+    .bg-confirmed { background-color: var(--primary-teal) !important; color: white; }
+    .bg-cancelled { background-color: var(--accent-pink) !important; color: white; }
+    .bg-completed { background-color: var(--dark-navy) !important; color: white; }
+    .bg-pending { background-color: #f0ad4e !important; color: var(--dark-navy); } /* Amarelo (Pending/Reagendado) */
 
-                {# --- Status e Ações --- #}
-                <div class="d-flex justify-content-between align-items-center">
-                    
-                    {# Bloco de Status #}
-                    <div>
-                        <span class="fw-bold me-2">Status:</span>
-                        {% if appointment.status == 'Agendado' %}
-                            {% if appt_passed %}
-                                <span class="badge bg-danger p-2">Atrasado/Pendente</span> 
-                            {% else %}
-                                <span class="badge bg-success p-2">Confirmado</span>
-                            {% endif %}
-                        {% elif appointment.status == 'Cancelado' %}
-                            <span class="badge bg-secondary p-2">Cancelado</span>
-                        {% elif appointment.status == 'Reagendado' %}
-                            <span class="badge bg-warning text-dark p-2">Reagendado</span>
-                        {% elif appointment.status == 'Concluído' %}
-                            <span class="badge bg-primary p-2">Concluído</span>
-                        {% else %}
-                            <span class="badge bg-info p-2">{{ appointment.status }}</span>
-                        {% endif %}
-                    </div>
-                    
-                    {# Botão de Cancelar (Condicional) #}
-                    {% if appointment.status == 'Agendado' and not appt_passed %}
-                    <form method="POST" action="{{ url_for('services.cancel_appointment', appointment_id=appointment.id) }}" 
-                            style="display:inline;"
-                            onsubmit="return confirm('Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita e uma notificação será enviada.');">
-                        <button type="submit" class="btn btn-outline-danger btn-sm">
-                            <i class="fas fa-times-circle me-1"></i> Cancelar
-                        </button>
-                    </form>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
+    /* Preço em Destaque */
+    .price-highlight {
+        font-weight: 700;
+        color: var(--primary-teal); /* Preço em Teal */
+    }
+
+    /* Botão de Cancelar (Ação perigosa) */
+    .btn-cancel-appt {
+        color: var(--accent-pink) !important;
+        border-color: var(--accent-pink) !important;
+        font-weight: 600;
+        border-radius: 50px;
+        transition: all 0.2s;
+    }
+    .btn-cancel-appt:hover {
+        background-color: var(--accent-pink) !important;
+        color: white !important;
+    }
+</style>
+
+<div class="container py-3">
+    
+    <div class="client-header">
+        <h1 class="mt-4 mb-2"><i class="bi bi-calendar-check me-2"></i> Meus Agendamentos</h1>
+        <p class="lead" style="color: var(--text-default);">Gerencie todos os seus serviços agendados conosco.</p>
     </div>
-    {% endfor %}
+
+    <p class="mb-5 mt-4">
+        <a href="{{ url_for('services.book_appointment') }}" class="btn btn-book-new">
+            <i class="bi bi-plus-circle-fill me-2"></i> Fazer Novo Agendamento
+        </a>
+    </p>
+
+    {% if appointments %}
+    <div class="table-responsive table-custom-client">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th scope="col" style="color: var(--text-on-dark);">Serviço</th>
+                    <th scope="col" style="color: var(--text-on-dark);">Data / Hora</th>
+                    <th scope="col" style="color: var(--text-on-dark);">Duração</th>
+                    <th scope="col" style="color: var(--text-on-dark);">Preço</th>
+                    <th scope="col" style="color: var(--text-on-dark);">Status</th>
+                    <th scope="col" style="color: var(--text-on-dark);">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for appointment in appointments %}
+                {% set appt_passed = appointment.data_horario < now() %}
+                
+                {# Define as CORES DE STATUS e Ícones #}
+                {% set status_badge = 'bg-confirmed' %}
+                {% set status_icon = 'bi-check-circle-fill' %}
+                {% set status_text = 'Confirmado' %}
+
+                {% if appointment.status == 'Cancelado' %}
+                    {% set status_badge = 'bg-cancelled' %}
+                    {% set status_icon = 'bi-x-circle-fill' %}
+                    {% set status_text = 'Cancelado' %}
+                {% elif appointment.status == 'Concluído' %}
+                    {% set status_badge = 'bg-completed' %}
+                    {% set status_icon = 'bi-clipboard-check-fill' %}
+                    {% set status_text = 'Concluído' %}
+                {% elif appointment.status == 'Reagendado' %}
+                    {% set status_badge = 'bg-pending' %}
+                    {% set status_icon = 'bi-arrow-repeat' %}
+                    {% set status_text = 'Reagendado' %}
+                {% elif appt_passed and appointment.status == 'Agendado' %}
+                    {# Se passou e ainda está como Agendado (Atrasado/Pendente) #}
+                    {% set status_badge = 'bg-secondary' %}
+                    {% set status_icon = 'bi-exclamation-triangle-fill' %}
+                    {% set status_text = 'Pendente' %}
+                {% endif %}
+
+                <tr class="table-row">
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-tag-fill me-2" style="color: var(--accent-pink);"></i>
+                            <div>
+                                <p class="fw-bold mb-1" style="color: var(--dark-navy);">{{ appointment.servico.nome }}</p>
+                                <p class="text-muted mb-0 small">#{{ appointment.id }}</p>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td>
+                        <p class="fw-normal mb-1">
+                            <i class="bi bi-calendar-event me-1" style="color: var(--primary-teal);"></i> {{ appointment.data_horario.strftime('%d/%m/%Y') }}
+                        </p>
+                        <p class="text-muted mb-0">
+                            <i class="bi bi-clock me-1"></i> {{ appointment.data_horario.strftime('%H:%M') }}
+                        </p>
+                    </td>
+
+                    <td>
+                        <span class="text-muted">{{ appointment.servico.duracao_minutos }} min</span>
+                    </td>
+
+                    <td>
+                        <span class="price-highlight">R$ {{ "%.2f"|format(appointment.servico.preco) }}</span>
+                    </td>
+
+                    <td>
+                        <span class="badge status-badge-client {{ status_badge }}">
+                            <i class="bi {{ status_icon }} me-1"></i>
+                            {{ status_text }}
+                        </span>
+                    </td>
+                    
+                    <td>
+                        {% if appointment.status == 'Agendado' and not appt_passed %}
+                        <form method="POST" action="{{ url_for('services.cancel_appointment', appointment_id=appointment.id) }}" 
+                                 style="display:inline;"
+                                 onsubmit="return confirm('Tem certeza? O cancelamento enviará uma notificação.');">
+                            <button type="submit" class="btn btn-outline-danger btn-sm btn-cancel-appt">
+                                <i class="bi bi-trash-fill"></i> Cancelar
+                            </button>
+                        </form>
+                        {% else %}
+                        <button class="btn btn-light btn-sm text-secondary" disabled>Sem Ações</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info shadow-sm" role="alert" style="border-left: 5px solid var(--primary-teal);">
+        <i class="bi bi-info-circle-fill me-2"></i> Você ainda não possui agendamentos. 
+        <a href="{{ url_for('services.book_appointment') }}" class="alert-link fw-bold" style="color: var(--dark-navy);">Agende seu primeiro serviço!</a>
+    </div>
+    {% endif %}
 </div>
-{% else %}
-<div class="alert alert-info alert-dismissible fade show shadow-sm" role="alert">
-    <i class="fas fa-info-circle me-2"></i> Você ainda não possui agendamentos. 
-    <a href="{{ url_for('services.book_appointment') }}" class="alert-link">Agende seu primeiro serviço!</a>
-</div>
-{% endif %}
 {% endblock %}

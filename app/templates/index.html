@@ -2,78 +2,138 @@
 
 {% block content %}
 
-<header class="p-5 mb-4 bg-light rounded-3 shadow-sm text-center">
+{# ---------------------------------------------------- #}
+{# 🚀 BANNER PRINCIPAL (HERO SECTION) - FOCO EM CONVERSÃO #}
+{# ---------------------------------------------------- #}
+<header class="p-5 mb-5 rounded-4 shadow-lg text-center" style="
+    background: linear-gradient(135deg, var(--light-gray) 0%, #fefeff 100%);
+    border: 1px solid rgba(0, 191, 178, 0.1);
+">
     <div class="container-fluid py-5">
-        <h1 class="display-4 fw-bold text-primary">
-            Agendamento Rápido e Inteligente 🚀
+        <h1 class="display-4 fw-bold" style="color: var(--dark-navy); font-weight: 700;">
+            Seu Próximo Agendamento de Beleza Começa Aqui <i class="fas fa-magic" style="color: var(--primary-teal);"></i>
         </h1>
-        <p class="fs-5 text-muted">
-            Sua plataforma para marcar serviços com facilidade, a qualquer hora e em qualquer lugar.
+        <p class="fs-5 text-muted my-4">
+            Marque serviços de manicure, cabelo ou estética com facilidade, a qualquer hora e em qualquer lugar, e receba lembretes automáticos.
         </p>
         
+        {# --- BOTÕES DE AÇÃO --- #}
         {% if current_user.is_authenticated %}
-            <a href="{{ url_for('services.book_appointment') }}" class="btn btn-primary btn-lg mt-3 shadow-sm">
-                Agendar Novo Serviço Agora!
+            <a href="{{ url_for('services.book_appointment') }}" class="btn btn-lg mt-3 btn-cta-primary shadow-lg" style="
+                background-color: var(--accent-pink); 
+                border-color: var(--accent-pink);
+                font-size: 1.25rem;
+                padding: 15px 35px;
+            ">
+                <i class="fas fa-calendar-plus me-2"></i> Agendar Novo Serviço Agora!
             </a>
             
         {% else %}
-            <div class="mt-4">
-                <p class="lead mb-3">Pronto para começar? Acesse sua conta ou crie uma nova:</p>
-                <a href="{{ url_for('auth.login') }}" class="btn btn-success btn-lg me-3 shadow-sm">
-                    Acessar Minha Conta (Login)
+            <div class="mt-5 d-flex justify-content-center flex-column flex-md-row">
+                <a href="{{ url_for('auth.login') }}" class="btn btn-lg me-md-3 mb-3 mb-md-0 btn-cta-primary shadow-lg" style="
+                    background-color: var(--primary-teal);
+                    border-color: var(--primary-teal);
+                    font-size: 1.1rem;
+                    padding: 12px 30px;
+                ">
+                    <i class="fas fa-sign-in-alt me-2"></i> Entrar e Agendar
                 </a>
-                <a href="{{ url_for('auth.register') }}" class="btn btn-outline-success btn-lg shadow-sm">
-                    Criar Conta (Registro)
+                <a href="{{ url_for('auth.register') }}" class="btn btn-lg btn-outline-dark shadow-sm btn-logout" style="
+                    border-color: var(--dark-navy);
+                    color: var(--dark-navy) !important;
+                    font-size: 1.1rem;
+                    padding: 12px 30px;
+                ">
+                    <i class="fas fa-user-plus me-2"></i> Criar Conta Grátis
                 </a>
             </div>
         {% endif %}
     </div>
 </header>
 
-<hr class="my-5">
+<hr class="my-5" style="border-top: 2px solid var(--primary-teal); opacity: 0.3;">
 
-<section class="row text-center mb-5">
+{# ---------------------------------------------------- #}
+{# 💡 SEÇÃO DE VANTAGENS - CARDS COM MICROINTERAÇÕES #}
+{# ---------------------------------------------------- #}
+<section class="row text-center mb-5 gx-4 gy-4">
+    <style>
+        .feature-card {
+            border: none;
+            transition: all 0.3s ease-in-out;
+            border-radius: 12px;
+            overflow: hidden;
+            border-bottom: 5px solid transparent;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15) !important;
+        }
+        .icon-wrapper {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            display: inline-block;
+            padding: 15px;
+            border-radius: 50%;
+            transition: all 0.3s ease-in-out;
+        }
+        /* Cor dos ícones no hover */
+        .feature-card:hover .icon-24-7 { color: var(--accent-pink); }
+        .feature-card:hover .icon-history { color: var(--primary-teal); }
+        .feature-card:hover .icon-security { color: var(--dark-navy); }
+    </style>
+
+    {# Vantagem 1: 24/7 Disponível #}
     <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <h3 class="card-title text-success">
-                    <i class="fas fa-calendar-check me-2"></i> 24/7 Disponível
+        <div class="card feature-card shadow-md h-100" style="border-bottom-color: var(--accent-pink);">
+            <div class="card-body py-5">
+                <span class="icon-wrapper bg-danger-subtle text-danger icon-24-7" style="color: var(--accent-pink);">
+                    <i class="fas fa-clock"></i>
+                </span>
+                <h3 class="card-title fw-bold mt-3" style="color: var(--dark-navy);">
+                    24/7 Disponível
                 </h3>
                 <p class="card-text text-muted">
-                    Marque seu horário em qualquer momento do dia, sem depender de atendimento telefônico.
+                    Marque seu horário para o corte, unha ou massagem a qualquer momento, sem depender do horário comercial.
                 </p>
             </div>
         </div>
     </div>
+
+    {# Vantagem 2: Histórico Completo #}
     <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <h3 class="card-title text-info">
-                    <i class="fas fa-user-clock me-2"></i> Histórico Completo
+        <div class="card feature-card shadow-md h-100" style="border-bottom-color: var(--primary-teal);">
+            <div class="card-body py-5">
+                <span class="icon-wrapper bg-info-subtle text-info icon-history" style="color: var(--primary-teal);">
+                    <i class="fas fa-clipboard-list"></i>
+                </span>
+                <h3 class="card-title fw-bold mt-3" style="color: var(--dark-navy);">
+                    Histórico Completo
                 </h3>
                 <p class="card-text text-muted">
-                    Visualize e gerencie todos os seus agendamentos passados e futuros em um único painel.
+                    Visualize todos os serviços passados, produtos usados e a frequência de seus agendamentos favoritos.
                 </p>
             </div>
         </div>
     </div>
+
+    {# Vantagem 3: Segurança de Dados #}
     <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <h3 class="card-title text-warning">
-                    <i class="fas fa-lock me-2"></i> Segurança de Dados
+        <div class="card feature-card shadow-md h-100" style="border-bottom-color: var(--dark-navy);">
+            <div class="card-body py-5">
+                <span class="icon-wrapper bg-warning-subtle text-warning icon-security" style="color: var(--dark-navy);">
+                    <i class="fas fa-shield-alt"></i>
+                </span>
+                <h3 class="card-title fw-bold mt-3" style="color: var(--dark-navy);">
+                    Segurança de Dados
                 </h3>
                 <p class="card-text text-muted">
-                    Seus dados pessoais e históricos de agendamento são protegidos com criptografia.
+                    Seus dados e preferências são protegidos com a mais alta criptografia, garantindo sua privacidade total.
                 </p>
             </div>
         </div>
     </div>
 </section>
 
-{% block scripts %}
-<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script> 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-{% endblock %}
-
+{# O bloco scripts é mantido vazio aqui, pois já está definido no base.html #}
 {% endblock %}

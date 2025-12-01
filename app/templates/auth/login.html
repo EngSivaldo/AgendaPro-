@@ -1,21 +1,145 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <h2 class="mb-4">Login</h2>
-        <form method="POST" action="{{ url_for('auth.login') }}">
-            <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
-                <input type="email" class="form-control" id="email" name="email" required>
+<style>
+    /* Variáveis de Cor FlyingDonut */
+    :root {
+        --color-dark: #2F3640; /* Texto / Fundo do Painel */
+        --color-teal: #1ABC9C; /* Teal (Foco/Secundário) */
+        --color-pink: #FF4757; /* Pink (CTA/Destaque principal) */
+    }
+
+    /* Estilos para o Card Centralizado */
+    .login-card {
+        border: none;
+        /* Usa Pink como a cor de destaque principal do formulário de Login */
+        border-top: 5px solid var(--color-pink); 
+    }
+
+    /* Inputs e Foco (Teal) */
+    .form-control-lg {
+        border-radius: 10px;
+    }
+    .form-control-lg:focus {
+        border-color: var(--color-teal); 
+        box-shadow: 0 0 0 0.25rem rgba(26, 188, 156, 0.25);
+    }
+    
+    /* Botão Principal de Login (CTA em Pink) */
+    .btn-login-main {
+        background-color: var(--color-pink);
+        border-color: var(--color-pink);
+        font-weight: 700;
+        border-radius: 50px;
+        padding: 0.75rem 0;
+        box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);
+        transition: all 0.2s ease-in-out;
+    }
+    .btn-login-main:hover {
+        background-color: #E63D4F;
+        border-color: #E63D4F;
+        transform: translateY(-1px);
+    }
+    
+    /* Botão Google (Estilo Secundário) */
+    .btn-google {
+        border-radius: 50px;
+        font-weight: 600;
+        border-color: #ced4da;
+    }
+    .btn-google:hover {
+        background-color: #f1f1f1;
+        border-color: #b0b0b0;
+    }
+    
+    /* Ícone do cabeçalho */
+    .icon-header {
+        color: var(--color-pink) !important; /* Ícone em Pink */
+        font-size: 2.5rem !important;
+    }
+    
+    .link-teal {
+        color: var(--color-teal) !important;
+    }
+</style>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            
+            <div class="card shadow-lg login-card">
+                <div class="card-body p-4 p-md-5">
+                    
+                    {# Header do Formulário #}
+                    <div class="text-center mb-5">
+                        <i class="fas fa-sign-in-alt icon-header mb-3"></i>
+                        <h2 class="h3 fw-bold" style="color: var(--color-dark);">
+                            Acesso ao Sistema <span class="link-teal">FlyD</span>
+                        </h2>
+                        <p class="text-muted">Entre com seu e-mail e senha.</p>
+                    </div>
+                    
+                    {# Opção de Login Social #}
+                    <div class="mb-4 w-100">
+                        <button class="btn btn-google w-100 btn-lg">
+                            <img src="https://img.icons8.com/color/24/000000/google-logo.png" alt="Google icon" class="me-2"> 
+                            Entrar com Google
+                        </button>
+                    </div>
+                    
+                    <div class="text-center text-muted mb-4 small fw-bold">ou use suas credenciais</div>
+
+                    {# Formulário Padrão #}
+                    <form method="POST" action="{{ url_for('auth.login') }}" class="w-100">
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label fw-semibold" style="color: var(--color-dark);">Email</label>
+                            <input 
+                                type="email" 
+                                class="form-control form-control-lg" 
+                                id="email" 
+                                name="email" 
+                                placeholder="seu@email.com" 
+                                required
+                            >
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="password" class="form-label fw-semibold" style="color: var(--color-dark);">Senha</label>
+                            <input 
+                                type="password" 
+                                class="form-control form-control-lg" 
+                                id="password" 
+                                name="password" 
+                                placeholder="Sua senha" 
+                                required
+                            >
+                        </div>
+                        
+                        <button 
+                            type="submit" 
+                            class="btn btn-login-main w-100 shadow-lg"
+                        >
+                            <i class="fas fa-box-arrow-in-right me-2"></i>
+                            Entrar
+                        </button>
+                    </form>
+                    
+                    <p class="text-center mt-4">
+                        <a href="#" class="text-muted small fw-semibold text-decoration-none">Esqueceu sua senha?</a>
+                    </p>
+                    
+                    <p class="text-center mt-4 mb-0">
+                        Não tem conta? 
+                        <a href="{{ url_for('auth.register') }}" class="fw-bold link-teal">
+                            Crie uma aqui
+                        </a>
+                    </p>
+                    
+                </div>
             </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Senha</label>
-                <input type="password" class="form-control" id="password" name="password" required>
-            </div>
-            <button type="submit" class="btn btn-success">Entrar</button>
-        </form>
-        <p class="mt-3">Não tem conta? <a href="{{ url_for('auth.register') }}">Crie uma aqui</a></p>
+            
+        </div>
     </div>
 </div>
 {% endblock %}

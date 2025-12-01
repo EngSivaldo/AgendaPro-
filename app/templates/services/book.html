@@ -1,52 +1,205 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+{# ====================================================== #}
+{# 🎯 BLOCO DE DEBUG 🎯 #}
+{# ESTE BLOCO VAI MOSTRAR O CONTEÚDO DA VARIÁVEL SERVICES #}
+{# ====================================================== #}
+<div class="alert alert-warning mx-auto mt-3" style="max-width: 600px;">
+    <h4 class="alert-heading">🔍 DEBUG (Verificação de Serviços)</h4>
+    <p class="mb-1">Variável **'services'** recebida pelo template:</p>
+    {% if services is defined %}
+        <p class="mb-1 fw-bold">Status: Variável definida e acessível.</p>
+        {% if services | length > 0 %}
+            <p class="mb-1">Total de serviços encontrados: <strong>{{ services | length }}</strong></p>
+            <ul>
+            {% for service in services %}
+                <li>ID: {{ service.id }} | Nome: {{ service.nome }} | Preço: {{ service.preco }}</li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p class="mb-0 text-danger fw-bold">⚠️ ATENÇÃO: A lista 'services' está vazia! (Verifique o BD/Filtro `is_active=True`).</p>
+        {% endif %}
+    {% else %}
+        <p class="mb-0 text-danger fw-bold">❌ ERRO GRAVE: A variável 'services' NÃO foi passada para o template na rota Flask!</p>
+    {% endif %}
+</div>
+<hr>
+{# ====================================================== #}
+{# FIM DO BLOCO DE DEBUG #}
+{# ====================================================== #}
+
+
+<style>
+    /* Variáveis CSS para o Design FlyingDonut */
+    /* Importante para que as cores (var(--dark-navy), etc.) funcionem */
+    :root {
+        --dark-navy: #2F3640;
+        --primary-teal: #1ABC9C;
+        --accent-pink: #FF4757;
+        --light-gray: #e9ecef;
+        --text-on-dark: white;
+    }
+
+    /* Estilo Específico para o Formulário */
+    .booking-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); /* Sombra suave */
+    }
+    .booking-card-header {
+        background-color: var(--dark-navy); /* Cabeçalho escuro e elegante */
+        color: var(--text-on-dark);
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+        padding: 1.5rem;
+    }
+    .booking-card-header h2 {
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+
+    /* Campos de Formulário Aprimorados */
+    .form-label-step {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--primary-teal); /* Teal para destacar os passos */
+        margin-bottom: 0.5rem;
+    }
+    .form-select-lg, .form-control-lg {
+        border-radius: 10px;
+        padding: 0.75rem 1.25rem;
+        transition: border-color 0.3s;
+    }
+    .form-select-lg:focus, .form-control-lg:focus {
+        border-color: var(--primary-teal);
+        box-shadow: 0 0 0 0.25rem rgba(0, 191, 178, 0.25);
+    }
+    
+    /* Área de Horários Disponíveis */
+    #slots-container {
+        border: 2px solid var(--light-gray) !important;
+        border-radius: 10px !important;
+        background-color: #f7f9fb !important; /* Fundo suave */
+        padding: 1rem !important;
+    }
+
+    /* Botão de Busca de Horários (Ação Secundária) */
+    #show-slots-button {
+        border-radius: 50px; /* Pilular */
+        font-weight: 600;
+        border-color: var(--primary-teal);
+        color: var(--primary-teal);
+        transition: all 0.2s ease-in-out;
+    }
+    #show-slots-button:hover {
+        background-color: var(--primary-teal);
+        color: white;
+    }
+    
+    /* Botões de Slots de Tempo */
+    .slot-button {
+        border-radius: 50px !important;
+        font-weight: 500;
+        transition: all 0.2s ease-in-out;
+    }
+    .slot-button.btn-primary {
+        background-color: var(--accent-pink) !important;
+        border-color: var(--accent-pink) !important;
+        box-shadow: 0 2px 8px rgba(255, 107, 129, 0.4);
+    }
+    .slot-button.btn-outline-primary {
+        color: var(--dark-navy);
+        border-color: var(--dark-navy);
+    }
+    .slot-button.btn-outline-primary:hover {
+        background-color: var(--primary-teal);
+        border-color: var(--primary-teal);
+        color: white;
+    }
+    
+
+    /* Botão Finalizar Agendamento (CTA Principal) */
+    #submit-button {
+        background-color: var(--accent-pink);
+        border-color: var(--accent-pink);
+        font-weight: 700;
+        font-size: 1.3rem;
+        padding: 0.75rem 1rem;
+        border-radius: 50px;
+        box-shadow: 0 4px 15px rgba(255, 107, 129, 0.5);
+        transition: all 0.3s ease-in-out;
+    }
+    #submit-button:not(:disabled):hover {
+        background-color: #f75c70;
+        transform: translateY(-2px);
+    }
+    #submit-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .form-step-separator {
+        border-top: 3px dashed rgba(0, 191, 178, 0.2);
+        margin: 2rem 0;
+    }
+</style>
+
 <div class="row justify-content-center">
     <div class="col-md-7 col-lg-6">
-        <div class="card shadow-lg border-0">
-            <div class="card-header bg-primary text-white text-center py-3">
-                <h2 class="mb-0"><i class="fas fa-calendar-alt"></i> Agende Seu Serviço</h2>
+        <div class="card booking-card">
+            <div class="card-header booking-card-header text-center">
+                <h2 class="mb-0"><i class="fas fa-calendar-alt me-2"></i> Agende Seu Serviço</h2>
             </div>
             
             <div class="card-body p-4">
                 <form method="POST" id="appointment-form">
                     
+                    {# --- PASSO 1: Seleção do Serviço --- #}
                     <div class="mb-4">
-                        <label for="service_id" class="form-label text-primary fw-bold">1. Selecione o Serviço</label>
+                        <label for="service_id" class="form-label form-label-step">1. Selecione o Serviço</label>
                         <select class="form-select form-select-lg" id="service_id" name="service_id" required>
                             <option value="" disabled selected>-- Escolha um serviço --</option>
-                            {% for service in services %}
+                            {# USANDO round(2) PARA EVITAR ERROS DE FORMATAÇÃO NO JINJA2 #}
+                            {% for service in services %} 
                                 <option value="{{ service.id }}" data-duration="{{ service.duracao_minutos }}">
-                                    {{ service.nome }} ({{ service.duracao_minutos }} min) - R$ {{ "%.2f"|format(service.preco) }}
+                                    {{ service.nome }} ({{ service.duracao_minutos }} min) - R$ {{ service.preco | round(2) }}
                                 </option>
                             {% endfor %}
                         </select>
                     </div>
 
+                    <hr class="form-step-separator">
+
+                    {# --- PASSO 2: Escolha da Data --- #}
                     <div class="mb-4">
-                        <label for="date" class="form-label text-primary fw-bold">2. Escolha a Data</label>
+                        <label for="date" class="form-label form-label-step">2. Escolha a Data</label>
                         <input type="date" class="form-control form-control-lg" id="date" name="date" required 
-                               min="{{ now().strftime('%Y-%m-%d') }}">
+                                min="{{ now().strftime('%Y-%m-%d') }}">
                     </div>
                     
-                    <hr class="my-4">
+                    <hr class="form-step-separator">
 
+                    {# --- PASSO 3: Seleção do Horário --- #}
                     <div class="mb-4">
-                        <h5 class="mb-3 text-secondary">3. Horários Disponíveis:</h5>
+                        <h5 class="mb-3 fw-bold" style="color: var(--dark-navy);">3. Horários Disponíveis:</h5>
                         
-                        <div id="slots-container" class="p-3 border rounded bg-white" style="min-height: 50px;">
+                        <div id="slots-container" class="p-3 border rounded" style="min-height: 50px;">
                             <p class="text-muted mb-0" id="slots-message">Selecione um Serviço e uma Data.</p>
                         </div>
                         
-                        <button type="button" class="btn btn-sm btn-outline-primary mt-3 w-100" id="show-slots-button">
-                            <i class="fas fa-search"></i> Buscar Horários Disponíveis
+                        {# Botão para Busca Manual #}
+                        <button type="button" class="btn btn-sm mt-3 w-100" id="show-slots-button">
+                            <i class="fas fa-search me-1"></i> Buscar Horários Disponíveis
                         </button>
                     </div>
 
                     <input type="hidden" name="time" id="selected_time" required>
 
-                    <button type="submit" class="btn btn-success btn-lg w-100 mt-4" id="submit-button" disabled>
-                        <i class="fas fa-check-circle"></i> Finalizar Agendamento
+                    {# --- PASSO 4: Botão de Finalização --- #}
+                    <button type="submit" class="btn btn-lg w-100 mt-4" id="submit-button" disabled>
+                        <i class="fas fa-check-circle me-1"></i> Finalizar Agendamento
                     </button>
                 </form>
             </div>
@@ -55,6 +208,13 @@
 </div>
 
 <script>
+    // ... Seu script JavaScript permanece inalterado para esta fase de debug.
+    // O JS só depende que o elemento #service_id exista.
+    // ... [Seu script JS completo aqui]
+    // ******************************************************
+    // LÓGICA JAVASCRIPT (MANTIDA INTACTA PARA FUNCIONALIDADE)
+    // ******************************************************
+    
     // Obtém referências aos elementos do DOM
     const serviceSelect = document.getElementById('service_id');
     const dateInput = document.getElementById('date');
@@ -68,7 +228,7 @@
     function updateSlotsMessage(text, isError = false) {
         slotsContainer.innerHTML = ''; // Limpa o conteúdo de botões
         const messageElement = document.createElement('p');
-        messageElement.className = isError ? 'text-danger mb-0' : 'text-muted mb-0';
+        messageElement.className = isError ? 'text-danger fw-bold mb-0' : 'text-muted mb-0';
         messageElement.innerText = text;
         slotsContainer.appendChild(messageElement);
     }

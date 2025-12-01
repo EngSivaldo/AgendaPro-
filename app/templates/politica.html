@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    /* Variáveis de Cor FlyingDonut */
+    :root {
+        --color-dark: #2F3640;
+        --color-teal: #1ABC9C;
+        --color-pink: #FF4757;
+    }
+
+    /* Estilos da Página de Documentação */
+    .doc-container {
+        max-width: 900px;
+        margin-top: 5rem;
+        margin-bottom: 5rem;
+    }
+    .doc-header h1 {
+        font-weight: 800;
+        color: var(--color-dark);
+        border-bottom: 3px solid var(--color-pink); /* Destaque em Pink */
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .doc-section h2 {
+        font-weight: 700;
+        color: var(--color-teal);
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        padding-left: 10px;
+        border-left: 5px solid var(--color-teal); /* Destaque em Teal */
+    }
+    .doc-section p, .doc-section li {
+        color: #555;
+        line-height: 1.8;
+        font-size: 1.05rem;
+    }
+    .doc-section ul {
+        list-style-type: none;
+        padding-left: 0;
+    }
+    .doc-section ul li:before {
+        content: "\2022"; /* Bullet point */
+        color: var(--color-pink);
+        font-weight: bold;
+        display: inline-block; 
+        width: 1em;
+        margin-left: -1em;
+    }
+
+</style>
+
+<div class="container doc-container">
+
+    <div class="doc-header text-center">
+        <h1>Política de Privacidade</h1>
+        <p class="lead text-muted">Esta política descreve como tratamos suas informações pessoais. (Data efetiva: 01 de Dezembro de 2025)</p>
+    </div>
+    
+    <div class="doc-content">
+        
+        <div class="doc-section">
+            <h2>1. Informações que Coletamos</h2>
+            <p>
+                Coletamos vários tipos de informações para fornecer e melhorar nosso Serviço a você.
+            </p>
+            <h3>Dados Pessoais:</h3>
+            <p>
+                Enquanto usa nosso Serviço, podemos pedir que você nos forneça certas informações de identificação pessoal que podem ser usadas para contatá-lo ou identificá-lo ("Dados Pessoais"). Isso inclui:
+            </p>
+            <ul>
+                <li>Nome completo</li>
+                <li>Endereço de email</li>
+                <li>Número de telefone</li>
+            </ul>
+        </div>
+
+        <div class="doc-section">
+            <h2>2. Uso dos Dados</h2>
+            <p>O **FlyD** usa os dados coletados para vários propósitos:</p>
+            <ul>
+                <li>Para fornecer e manter o Serviço (agendamentos).</li>
+                <li>Para notificá-lo sobre alterações em nosso Serviço.</li>
+                <li>Para permitir que você participe de recursos interativos do nosso Serviço.</li>
+                <li>Para fornecer suporte ao cliente.</li>
+            </ul>
+        </div>
+
+        <div class="doc-section">
+            <h2>3. Transferência de Dados</h2>
+            <p>
+                Suas informações, incluindo Dados Pessoais, podem ser transferidas e mantidas em computadores localizados fora do seu estado, província, país ou outra jurisdição governamental onde as leis de proteção de dados podem ser diferentes das de sua jurisdição.
+            </p>
+            <p>
+                Ao continuar o uso do Serviço e fornecer tais informações, você concorda com esta transferência.
+            </p>
+        </div>
+        
+        <div class="doc-section">
+            <h2>4. Segurança dos Dados</h2>
+            <p>
+                A segurança dos seus dados é importante para nós, mas lembre-se que nenhum método de transmissão pela Internet, ou método de armazenamento eletrônico é 100% seguro. Embora nos esforcemos para usar meios comercialmente aceitáveis para proteger seus Dados Pessoais, não podemos garantir sua segurança absoluta.
+            </p>
+        </div>
+        
+        <div class="alert alert-danger mt-5" role="alert" style="border-left: 5px solid var(--color-pink);">
+            <i class="fas fa-exclamation-triangle me-2" style="color: var(--color-pink);"></i> 
+            É sua responsabilidade legal preencher esta seção com textos de Política de Privacidade juridicamente válidos e completos.
+        </div>
+        
+    </div>
+
+</div>
+
+{% endblock %}

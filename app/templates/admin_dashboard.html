@@ -2,60 +2,148 @@
 
 {% block content %}
 
-<div class="row mb-4">
+<style>
+    /* Estilo para o Título (Mais impacto visual) */
+    .admin-header h1 {
+        font-weight: 800; /* Extra Bold */
+        letter-spacing: 1px;
+        color: var(--dark-navy) !important;
+        margin-bottom: 0.5rem;
+    }
+    .admin-header h1 i {
+        color: var(--accent-pink); /* Ícone em Pink */
+        margin-right: 0.75rem;
+    }
+
+    /* Cards de Ação (Com microinteração) */
+    .action-card {
+        border: 1px solid var(--light-gray);
+        border-radius: 12px;
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        overflow: hidden;
+        border-bottom: 5px solid transparent; /* Para o efeito de borda temática */
+    }
+    .action-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+    .card-icon {
+        font-size: 3.5rem; /* Ícones um pouco menores, mais elegantes */
+        margin-bottom: 1rem;
+        display: block;
+    }
+    
+    /* Cores dos Ícones e Bordas nos Cards */
+    .card-appointments i { color: var(--primary-teal); }
+    .card-appointments { border-bottom-color: var(--primary-teal); }
+
+    .card-services i { color: var(--accent-pink); }
+    .card-services { border-bottom-color: var(--accent-pink); }
+
+    .card-users i { color: #5D9CEC; } /* Um azul limpo para usuários */
+    .card-users { border-bottom-color: #5D9CEC; }
+
+    /* Estilo para Botões dentro do Card (Alinhado ao tema) */
+    .btn-card-teal {
+        background-color: var(--primary-teal);
+        border-color: var(--primary-teal);
+        color: white;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    .btn-card-teal:hover {
+        background-color: #00A396;
+        border-color: #00A396;
+    }
+    .btn-card-pink {
+        background-color: var(--accent-pink);
+        border-color: var(--accent-pink);
+        color: white;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    .btn-card-pink:hover {
+        background-color: #E65A70;
+        border-color: #E65A70;
+    }
+
+    /* Estilo para o Resumo Rápido */
+    .quick-summary {
+        background-color: #ffffff;
+        border-left: 5px solid var(--primary-teal);
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+    .quick-summary h4 {
+        color: var(--dark-navy);
+        font-weight: 600;
+    }
+
+</style>
+
+{# ---------------------------------------------------- #}
+{# 🛡️ HEADER ADMINISTRATIVO #}
+{# ---------------------------------------------------- #}
+<div class="row mb-4 admin-header">
     <div class="col-12">
-        <h1 class="display-5 fw-bold text-danger">
-            <i class="fas fa-shield-alt me-2"></i> Painel de Administração
+        <h1 class="display-5 fw-bold">
+            <i class="fas fa-shield-alt"></i> Painel de Administração
         </h1>
-        <p class="lead text-muted">
-            Gerencie serviços, visualize agendamentos de todos os usuários e acesse estatísticas do sistema.
+        <p class="lead" style="color: var(--text-default);">
+            Gerencie serviços, visualize agendamentos de todos os usuários e acesse estatísticas do sistema **Smart Agenda**.
         </p>
     </div>
 </div>
 
-<hr>
+<hr style="border-top: 1px solid rgba(0, 191, 178, 0.2);">
 
+{# ---------------------------------------------------- #}
+{# 🗂️ CARTÕES DE AÇÃO PRINCIPAL #}
+{# ---------------------------------------------------- #}
 <div class="row mt-4">
 
+    {# Card 1: Gerenciar Agendamentos #}
     <div class="col-md-4 mb-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-calendar-check fa-4x text-success mb-3"></i>
-                <h5 class="card-title fw-bold">Gerenciar Agendamentos</h5>
+        <div class="card shadow-sm h-100 action-card card-appointments">
+            <div class="card-body text-center py-4">
+                <i class="fas fa-calendar-check card-icon mb-3"></i>
+                <h5 class="card-title fw-bold" style="color: var(--dark-navy);">Gerenciar Agendamentos</h5>
                 <p class="card-text text-muted">
-                    Visualize, aprove, cancele ou reagende todos os compromissos do sistema.
+                    Visualize, aprove, cancele ou reagende todos os compromissos do sistema em tempo real.
                 </p>
-                <a href="{{ url_for('services.manage_appointments') }}" class="btn btn-success mt-2">
+                <a href="{{ url_for('services.manage_appointments') }}" class="btn btn-card-teal mt-2">
                     <i class="fas fa-list-ul me-1"></i> Ver Todos
                 </a>
             </div>
         </div>
     </div>
 
+    {# Card 2: Gerenciar Serviços #}
     <div class="col-md-4 mb-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-tags fa-4x text-warning mb-3"></i>
-                <h5 class="card-title fw-bold">Gerenciar Serviços</h5>
+        <div class="card shadow-sm h-100 action-card card-services">
+            <div class="card-body text-center py-4">
+                <i class="fas fa-tags card-icon mb-3"></i>
+                <h5 class="card-title fw-bold" style="color: var(--dark-navy);">Gerenciar Serviços</h5>
                 <p class="card-text text-muted">
-                    Adicione, edite ou remova os serviços disponíveis para agendamento.
+                    Adicione, edite preços, descrições ou remova os serviços disponíveis (cabelo, unhas, etc.).
                 </p>
-                <a href="{{ url_for('services.list_services') }}" class="btn btn-warning text-dark mt-2">
+                <a href="{{ url_for('services.list_services') }}" class="btn btn-card-pink mt-2">
                     <i class="fas fa-tools me-1"></i> Configurar Serviços
                 </a>
             </div>
         </div>
     </div>
 
+    {# Card 3: Gerenciar Usuários #}
     <div class="col-md-4 mb-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-users-cog fa-4x text-primary mb-3"></i>
-                <h5 class="card-title fw-bold">Gerenciar Usuários</h5>
+        <div class="card shadow-sm h-100 action-card card-users">
+            <div class="card-body text-center py-4">
+                <i class="fas fa-users-cog card-icon mb-3"></i>
+                <h5 class="card-title fw-bold" style="color: var(--dark-navy);">Gerenciar Usuários</h5>
                 <p class="card-text text-muted">
-                    Visualize e gerencie as permissões e cadastros dos usuários (clientes e admins).
+                    Visualize e gerencie as permissões e cadastros dos usuários (clientes, profissionais e admins).
                 </p>
-                <a href="{{ url_for('auth.manage_users') }}" class="btn btn-primary mt-2"> 
+                <a href="{{ url_for('auth.manage_users') }}" class="btn btn-dark mt-2" style="background-color: #5D9CEC; border-color: #5D9CEC;"> 
                     <i class="fas fa-user-friends me-1"></i> Ver Usuários
                 </a>
             </div>
@@ -64,11 +152,20 @@
 
 </div>
 
+{# ---------------------------------------------------- #}
+{# 📊 RESUMO RÁPIDO (Área para Gráficos) #}
+{# ---------------------------------------------------- #}
 <div class="row mt-4">
     <div class="col-12">
-        <div class="card shadow-sm p-4">
-            <h4 class="text-secondary"><i class="fas fa-chart-line me-2"></i> Resumo Rápido</h4>
-            <p>Aqui você pode inserir gráficos, contagem de agendamentos pendentes ou outras métricas importantes.</p>
+        <div class="card shadow-md p-4 quick-summary">
+            <h4 class="mb-3"><i class="fas fa-chart-line me-2"></i> Resumo Rápido e Métricas</h4>
+            <p class="text-secondary">
+                Aqui você pode inserir gráficos dinâmicos de faturamento mensal, contagem de agendamentos pendentes ou uma lista dos próximos compromissos para a semana.
+            </p>
+            <div class="mt-3">
+                <p class="mb-1"><i class="fas fa-arrow-right me-2" style="color: var(--primary-teal);"></i> **Agendamentos Pendentes:** <span class="badge bg-warning text-dark">5</span></p>
+                <p class="mb-1"><i class="fas fa-arrow-right me-2" style="color: var(--primary-teal);"></i> **Faturamento Últimos 30 dias:** <span class="badge bg-success">R$ 12.540,00</span></p>
+            </div>
         </div>
     </div>
 </div>

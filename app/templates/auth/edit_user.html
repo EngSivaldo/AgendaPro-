@@ -1,43 +1,76 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-5">
+
+<style>
+    /* Estilos base FlyingDonut - Teal/Pink */
+    :root {
+        --color-teal: #1ABC9C; /* Info */
+        --color-pink: #FF4757; /* Perigo/Destaque */
+        --color-dark: #2F3640;
+    }
+    /* Adaptação para o estilo do formulário */
+    .btn-info {
+        background-color: var(--color-teal) !important;
+        border-color: var(--color-teal) !important;
+    }
+    .text-info {
+        color: var(--color-teal) !important;
+    }
+    .text-danger {
+        color: var(--color-pink) !important;
+    }
+    .card-shadow-custom {
+        /* Adiciona uma borda teal sutil no topo para destaque */
+        border-top: 5px solid var(--color-teal); 
+    }
+    .btn-return {
+        background-color: var(--color-dark) !important;
+        border-color: var(--color-dark) !important;
+        color: white;
+    }
+</style>
+
+<div class="container mt-5 mb-5">
     
     <div class="row justify-content-center">
         <div class="col-md-8">
             
-            <a href="{{ url_for('auth.manage_users') }}" class="btn btn-secondary btn-sm mb-3">
+            {# Link de Volta no Estilo FlyingDonut (Cor Escura) #}
+            <a href="{{ url_for('auth.manage_users') }}" class="btn btn-sm mb-3 btn-return">
                 <i class="fas fa-arrow-left me-1"></i> Voltar para Gerenciamento
             </a>
 
+            {# Título da Página (Teal) #}
             <h1 class="display-6 fw-bold text-info mb-4">
                 <i class="fas fa-edit me-2"></i> Editar Usuário: {{ user.nome }}
             </h1>
 
-            <div class="card shadow">
-                <div class="card-body">
+            {# Cartão do Formulário #}
+            <div class="card shadow card-shadow-custom">
+                <div class="card-body p-4">
                     
                     <form method="POST" action="{{ url_for('auth.edit_user', user_id=user.id) }}">
                         
                         {# Campo Nome #}
                         <div class="mb-3">
-                            <label for="nome" class="form-label">Nome Completo</label>
+                            <label for="nome" class="form-label fw-bold">Nome Completo</label>
                             <input type="text" class="form-control" id="nome" name="nome" 
-                                   value="{{ user.nome }}" required>
+                                    value="{{ user.nome }}" required>
                         </div>
 
                         {# Campo Email #}
                         <div class="mb-3">
-                            <label for="email" class="form-label">Email</label>
+                            <label for="email" class="form-label fw-bold">Email</label>
                             <input type="email" class="form-control" id="email" name="email" 
-                                   value="{{ user.email }}" required>
+                                    value="{{ user.email }}" required>
                         </div>
 
                         {# Campo para Alterar Senha #}
                         <div class="mb-3">
-                            <label for="password" class="form-label">Nova Senha (Deixe em branco para não alterar)</label>
+                            <label for="password" class="form-label fw-bold">Nova Senha</label>
                             <input type="password" class="form-control" id="password" name="password" 
-                                   placeholder="Digite a nova senha">
+                                    placeholder="Digite a nova senha">
                             <small class="form-text text-muted">A senha atual será mantida se este campo for deixado vazio.</small>
                         </div>
                         
@@ -45,18 +78,20 @@
 
                         {# Campo Permissão de Administrador #}
                         <div class="form-check mb-4">
-                            {# Verifica se o campo 'is_admin' do usuário é True e marca o checkbox #}
+                            {# Estilização para alinhar o checkbox #}
                             <input class="form-check-input" type="checkbox" id="is_admin" name="is_admin" 
-                                   value="True" {% if user.is_admin %} checked {% endif %}>
+                                    value="True" {% if user.is_admin %} checked {% endif %}>
+                            
                             <label class="form-check-label fw-bold" for="is_admin">
                                 Tornar Administrador (Admin)
                             </label>
+                            
                             <p class="form-text text-danger">
-                                Use com cautela! Define permissões totais de acesso.
+                                <i class="fas fa-exclamation-triangle me-1"></i> Use com cautela! Define permissões totais de acesso.
                             </p>
                         </div>
 
-                        {# Botões de Ação #}
+                        {# Botão de Ação (Teal) #}
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-info btn-lg text-white">
                                 <i class="fas fa-save me-1"></i> Salvar Alterações

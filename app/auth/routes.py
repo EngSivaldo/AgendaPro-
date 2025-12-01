@@ -8,33 +8,58 @@ from app import db
 
 ## --- ROTAS DE AUTENTICAÇÃO ---
 
+from flask import Blueprint, render_template, request, flash, redirect, url_for
+from app.models import User # Assumindo que User está em app.models
+from app import db # Assumindo que db está importado aqui
+
+bp = Blueprint('auth', __name__, url_prefix='/auth')
+# ... (Outras rotas do Blueprint 'auth')
+
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
     """Rota para registrar novos usuários (Clientes)"""
-    # ... (O resto do código da rota register está correto)
+
     if request.method == 'POST':
         nome = request.form.get('nome')
         email = request.form.get('email')
         password = request.form.get('password')
         
+        # 📌 CAMPO NOVO DO FORMULÁRIO (register.html)
+        confirm_password = request.form.get('confirm_password') 
+        
+        # --- 1. VALIDAÇÃO: Senhas Iguais ---
+        if password != confirm_password:
+            flash('As senhas digitadas não são iguais. Tente novamente.', 'danger')
+            return redirect(url_for('auth.register'))
+            
+        # --- 2. VALIDAÇÃO: Email Existente ---
         user = User.query.filter_by(email=email).first()
-
-        # 1. Validação de Email Existente
         if user:
-            flash('Este email já está registrado.', 'warning')
+            flash('Este email já está registrado. Por favor, faça login.', 'warning')
             return redirect(url_for('auth.register'))
 
-        # 2. Criação do Novo Usuário
+        # --- 3. Criação do Novo Usuário ---
         new_user = User(nome=nome, email=email, is_admin=False)
-        # Assumindo que set_password e check_password funcionam
+        
+        # Assumindo que set_password é o método que hasheia a senha
         new_user.set_password(password) 
 
         db.session.add(new_user)
-        db.session.commit()
         
-        flash('Registro realizado com sucesso! Por favor, faça o login.', 'success')
-        return redirect(url_for('auth.login'))
-        
+        try:
+            db.session.commit()
+            
+            # --- 4. Sucesso ---
+            flash('Registro realizado com sucesso! Por favor, faça o login.', 'success')
+            return redirect(url_for('auth.login'))
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Erro ao salvar novo usuário: {e}")
+            flash('Ocorreu um erro interno ao registrar. Tente novamente.', 'danger')
+            return redirect(url_for('auth.register'))
+            
+    # Requisição GET
     return render_template('auth/register.html', title='Registrar')
 
 @bp.route('/login', methods=['GET', 'POST'])
@@ -63,7 +88,7 @@ def login():
             return redirect(url_for('services.admin_dashboard'))
         
         flash(f'Bem-vindo(a), {user.nome}!', 'success')
-        return redirect(url_for('index'))
+        return redirect(url_for('main.index'))
         
     return render_template('auth/login.html', title='Login')
 
@@ -73,7 +98,7 @@ def logout():
     """Rota para fazer logout"""
     logout_user()
     flash('Você saiu da sua conta.', 'info')
-    return redirect(url_for('index'))
+    return redirect(url_for('main.index'))
 
 # NOVO: Implementação da rota manage_users (necessária para corrigir o BuildError do template)
 from app.decorators import admin_required 

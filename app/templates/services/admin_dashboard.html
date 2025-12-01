@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-5">
+    <h2>Painel de Administração</h2>
+    <hr>
+
+    <div class="row">
+        <div class="col-md-12">
+            <h3>Gerenciamento de Serviços ({{ services|length }})</h3>
+            
+            <a href="#" class="btn btn-success mb-3">
+                <i class="fas fa-plus"></i> Adicionar Novo Serviço
+            </a>
+
+            <table class="table table-striped table-hover">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>Nome do Serviço</th>
+                        <th>Duração (min)</th>
+                        <th>Preço</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for service in services %}
+                    <tr>
+                        <td>{{ service.nome }}</td>
+                        <td>{{ service.duracao }}</td>
+                        <td>R$ {{ "%.2f"|format(service.preco) }}</td>
+                        <td>
+                            {% if service.is_active %}
+                                <span class="badge bg-success">Ativo</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inativo (Soft Deleted)</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-primary">Editar</a>
+                            
+                            {% if service.is_active %}
+                                <form method="POST" action="{{ url_for('services.deactivate_service', service_id=service.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm btn-warning">Desativar</button>
+                                </form>
+                            {% else %}
+                                <form method="POST" action="{{ url_for('services.activate_service', service_id=service.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm btn-info">Reativar</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
