@@ -84,7 +84,7 @@
 </div>
 
 <div class="mb-4">
-    <a href="{{ url_for('services.create_service') }}" class="btn btn-add-service">
+    <a href="{{ url_for('admin.create_service') }}" class="btn btn-add-service">
         <i class="fas fa-plus-circle me-1"></i> Adicionar Novo Serviço
     </a>
 </div>
@@ -106,20 +106,36 @@
                 <td><strong style="color: var(--dark-navy);">{{ service.nome }}</strong></td>
                 <td class="text-end service-price">R$ {{ "%.2f"|format(service.preco) }}</td>
                 <td class="text-center">{{ service.duracao_minutos }}</td>
-                <td>{{ service.descricao or '<span class="text-muted fst-italic">Sem descrição</span>' }}</td>
+                <td>
+                    {# Mostra status de Inativo se for o caso. Adicionado classe para manipulação via JS #}
+                    {% if not service.is_active %}
+                        <span class="badge bg-secondary me-2 service-inactive-badge">INATIVO</span>
+                    {% endif %}
+                    {{ service.descricao or '<span class="text-muted fst-italic">Sem descrição</span>' | safe }}
+                </td>
                 <td class="text-center">
-                    {# Botão Editar em Teal #}
-                    <a href="{{ url_for('services.edit_service', service_id=service.id) }}" class="btn btn-sm btn-edit-teal me-2">
-                        <i class="fas fa-edit"></i> Editar
-                    </a>
-                    
-                    {# Botão Excluir em Pink #}
-                    <form method="POST" action="{{ url_for('services.delete_service', service_id=service.id) }}" style="display:inline;">
-                        <button type="submit" class="btn btn-sm btn-delete-pink" 
-                                onclick="return confirm('ATENÇÃO: Deseja realmente remover o serviço {{ service.nome }}? Esta ação é irreversível e pode exigir a remoção de agendamentos associados.');">
-                            <i class="fas fa-trash"></i> Excluir
+                    <div class="d-flex justify-content-center gap-2">
+                        
+                        {# 1. Botão Editar (Ação GET) #}
+                        <a href="{{ url_for('admin.edit_service', service_id=service.id) }}" class="btn btn-sm btn-edit-teal">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
+                        
+                        {# 2. Botão de Toggle (AJAX) #}
+                        <button type="button" 
+                                class="btn btn-sm toggle-service-btn {% if service.is_active %}btn-delete-pink{% else %}btn-success{% endif %}"
+                                data-service-id="{{ service.id }}" 
+                                data-is-active="{{ service.is_active | tojson }}"
+                                data-active-text="Desativar" 
+                                data-inactive-text="Ativar">
+                            
+                            {% if service.is_active %}
+                                <i class="fas fa-toggle-off"></i> Desativar
+                            {% else %}
+                                <i class="fas fa-toggle-on"></i> Ativar
+                            {% endif %}
                         </button>
-                    </form>
+                    </div>
                 </td>
             </tr>
             {% else %}
@@ -132,7 +148,125 @@
             </tr>
             {% endfor %}
         </tbody>
-        
     </table>
 </div>
+
+{% endblock %} 
+
+{# ---------------------------------------------------------------------------------- #}
+{# BLOCO DE SCRIPTS (Corrigido para AJAX Puro e robustez de eventos) #}
+{# ---------------------------------------------------------------------------------- #}
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleButtons = document.querySelectorAll('.toggle-service-btn');
+
+    toggleButtons.forEach(button => {
+        
+        // 🚨 NOVIDADE: Remove listeners anteriores para evitar duplicação em Hot Reloading
+        // O `null` aqui indica que removerá qualquer listener do tipo 'click' (funciona em alguns ambientes)
+        button.removeEventListener('click', null); 
+
+        button.addEventListener('click', function() {
+            
+            const serviceId = this.getAttribute('data-service-id');
+            
+            // Leitura robusta do estado: Converte para minúsculas para comparar com 'true'
+            const isActive = this.getAttribute('data-is-active').toLowerCase() === 'true'; 
+            
+            const nomeServico = this.closest('tr').querySelector('strong').textContent.trim();
+            const actionText = isActive ? 'desativar' : 'ativar';
+
+            const confirmationMessage = `Tem certeza que deseja ${actionText} o serviço ${nomeServico}?`;
+
+            if (!confirm(confirmationMessage)) {
+                return; 
+            }
+
+            const url = `{{ url_for('admin.toggle_service_active', service_id=0) }}`.replace('0', serviceId);
+            const originalHtml = this.innerHTML; // Salva o HTML original
+
+            // Feedback Visual: Bloqueia o botão e mostra processando
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processando...';
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest' 
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { 
+                        throw new Error(err.message || `Erro do Servidor: ${response.status}`); 
+                    });
+                }
+                return response.json(); 
+            })
+            .then(data => {
+                if (data.success) {
+                    const finalStatus = data.new_status; 
+
+                    // 1. ATUALIZA O ESTADO (Sincroniza o DOM com o Back-End)
+                    this.setAttribute('data-is-active', finalStatus.toString()); 
+
+                    // 2. Localiza e manipula o badge INATIVO
+                    const descriptionCell = this.closest('tr').children[3];
+                    let badge = descriptionCell.querySelector('.service-inactive-badge');
+
+                    // 3. Atualiza o botão (Cor e Texto)
+                    // ... (dentro do .then(data => { ... )
+
+    // 3. Atualiza o botão (Cor e Texto)
+    // Se o status FINAL for TRUE (ATIVADO)
+    if (finalStatus) { 
+        // ➡️ O botão AGORA deve dizer DESATIVAR e ser ROSA
+        this.classList.remove('btn-success'); // Remove a cor de Ativar
+        this.classList.add('btn-delete-pink'); // Adiciona a cor de Desativar
+        this.innerHTML = `<i class="fas fa-toggle-off"></i> ${this.getAttribute('data-active-text')}`; // Texto: Desativar
+        
+        // Remove o badge INATIVO
+        if (badge) {
+            badge.remove();
+        }
+    } else { // Se o status FINAL for FALSE (DESATIVADO)
+        // ➡️ O botão AGORA deve dizer ATIVAR e ser VERDE
+        this.classList.remove('btn-delete-pink'); // Remove a cor de Desativar
+        this.classList.add('btn-success'); // Adiciona a cor de Ativar
+        this.innerHTML = `<i class="fas fa-toggle-on"></i> ${this.getAttribute('data-inactive-text')}`; // Texto: Ativar
+        
+        // Adiciona o badge INATIVO
+        if (!badge) {
+             const newBadge = document.createElement('span');
+             newBadge.className = 'badge bg-secondary me-2 service-inactive-badge';
+             newBadge.textContent = 'INATIVO';
+             descriptionCell.prepend(newBadge); 
+        }
+    }
+    
+    // ... (restante do código) ...
+                    
+                    alert(`Sucesso: ${data.message}`);
+
+                } else {
+                    throw new Error(data.message || 'Erro desconhecido ao processar a resposta.');
+                }
+                
+                this.disabled = false; // Reativa o botão em sucesso
+            })
+            .catch(error => {
+                console.error('Erro na alteração de status:', error);
+                alert(`ERRO: ${error.message}`);
+                
+                // Reverte estado visual em caso de falha
+                this.disabled = false;
+                this.innerHTML = originalHtml; 
+            });
+        });
+    });
+});
+</script>
 {% endblock %}

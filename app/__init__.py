@@ -1,6 +1,6 @@
 # app/__init__.py
 
-from flask import Flask, render_template # Removendo render_template daqui, não é usado na função
+from flask import Flask, render_template
 from celery import Celery 
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -24,7 +24,7 @@ db = SQLAlchemy()
 migrate = Migrate()
 login = LoginManager()
 mail = Mail() 
-moment = Moment() # Inicialização da instância Moment
+moment = Moment() 
 
 def create_app(config_class=Config):
     # Cria a instância da aplicação Flask
@@ -43,7 +43,7 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     login.init_app(app) 
     mail.init_app(app) 
-    moment.init_app(app) # Inicializa Flask-Moment
+    moment.init_app(app) 
     
     
     # ===============================================
@@ -52,9 +52,6 @@ def create_app(config_class=Config):
     
     # Configura o Celery com as configurações do Flask
     celery.conf.update(app.config)
-    
-    # Importar o módulo tasks AQUI garante que as tarefas sejam registradas,
-    # quebrando o ciclo de importação e resolvendo o erro 'KeyError'.
     
     # Cria uma classe base para tarefas que injeta o contexto da aplicação Flask
     class ContextTask(celery.Task):
@@ -68,7 +65,6 @@ def create_app(config_class=Config):
     # 3. CONFIGURAÇÃO DO FLASK-LOGIN (user_loader)
     # ===============================================
     
-    # Importa o modelo User AQUI, após db.init_app(app)
     from app.models import User 
     
     @login.user_loader 
@@ -82,21 +78,22 @@ def create_app(config_class=Config):
     # 4. REGISTRO DE BLUEPRINTS E ROTAS
     # ===============================================
     
-    # Importa e registra o Blueprint de Autenticação
+    # 1. Autenticação
     from app.auth.routes import bp as auth_bp
     app.register_blueprint(auth_bp, url_prefix='/auth') 
     
-    # Importa e registra o Blueprint de Serviços/Agendamento
+    # 2. Serviços/Agendamento (Cliente)
     from app.services.routes import bp as services_bp 
     app.register_blueprint(services_bp, url_prefix='/services')
     
-    # NOVO: Importa e registra o Blueprint Principal (main)
-    # ESTE PASSO É CRUCIAL PARA ENCONTRAR main.terms
-    from app.main.routes import bp as main_bp # Assumindo que você usa 'bp' em app/main/routes.py
+    # 3. Principal (Index, Termos, etc.)
+    from app.main.routes import bp as main_bp
     app.register_blueprint(main_bp)
 
-    # REMOVIDO: @app.route('/') - A rota index deve estar em app/main/routes.py agora.
-
+    # 📌 NOVO: 4. ADMINISTRAÇÃO (CRUD de Serviços e Gerenciamento)
+    from app.admin.routes import bp as admin_bp 
+    app.register_blueprint(admin_bp, url_prefix='/admin') # Prefixo opcional, mas coerente
+    
 
     # ===============================================
     # 5. REGISTRO DE COMANDOS CLI CUSTOMIZADOS

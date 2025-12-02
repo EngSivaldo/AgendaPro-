@@ -154,7 +154,7 @@
                 <td>
                     {% if appointment.status != 'Cancelado' and appointment.status != 'Concluído' %}
                     <form method="POST" 
-                          action="{{ url_for('services.update_appointment_status', appointment_id=appointment.id) }}" 
+                          action="{{ url_for('admin.update_appointment_status', appointment_id=appointment.id) }}" 
                           class="input-group input-group-sm"
                           onsubmit="return handleStatusChange(this);">
                         
@@ -179,7 +179,7 @@
                 {# ---------------------------------------------------- #}
                 <td>
                     {% if appointment.status != 'Concluído' and not appt_passed %} 
-                    <form method="POST" action="{{ url_for('services.reschedule_appointment', appointment_id=appointment.id) }}" class="input-group input-group-sm">
+                    <form method="POST" action="{{ url_for('admin.reschedule_appointment', appointment_id=appointment.id) }}" class="input-group input-group-sm">
                         
                         <input type="datetime-local" 
                                name="new_datetime" 

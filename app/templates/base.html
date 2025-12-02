@@ -105,9 +105,9 @@
             transition: all 0.3s ease-in-out;
         }
         .btn-cta-primary:hover {
-             background-color: #f75c70;
-             box-shadow: 0 6px 20px rgba(255, 107, 129, 0.6);
-             transform: translateY(-2px) scale(1.02);
+            background-color: #f75c70;
+            box-shadow: 0 6px 20px rgba(255, 107, 129, 0.6);
+            transform: translateY(-2px) scale(1.02);
         }
 
         /* Botão de Sair (Contraste Elegante) */
@@ -219,74 +219,75 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-lg-center">
                     
+                    {# 🛡️ 1. ADMIN DROPDOWN #}
+                    {% if current_user.is_admin %}
+                    <li class="nav-item dropdown me-2">
+                        <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu de Administração">
+                            <i class="fas fa-tools me-2"></i> Administração
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="adminDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('admin.manage_appointments') }}">
+                                <i class="fas fa-calendar-alt me-2"></i> Gerenciar Agendamentos
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('admin.list_services') }}">
+                                <i class="fas fa-tags me-2"></i> Gerenciar Serviços
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            {# Relatório de Faturamento em Destaque #}
+                            <li><a class="dropdown-item fw-bold" style="color: var(--primary-teal);" href="{{ url_for('admin.billing_report') }}">
+                                <i class="fas fa-chart-line me-2"></i> Relatório de Faturamento
+                            </a></li>
+
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <li><a class="dropdown-item fw-bold" style="color: var(--accent-pink);" href="{{ url_for('admin.admin_dashboard') }}">
+                                <i class="fas fa-shield-alt me-2"></i> Admin Dashboard
+                            </a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                    
+                    {# ✅ 2. LÓGICA DE LOGIN/LOGOUT E CLIENTE (Adicionada) #}
                     {% if current_user.is_authenticated %}
+                        {# Opções para Usuário Logado #}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('services.my_appointments') }}">
+                                <i class="fas fa-history me-2"></i> Meus Agendamentos
+                            </a>
+                        </li>
                         
-                        {# Destaque do Nome do Usuário (apenas em telas maiores) #}
-                        <li class="nav-item me-3 d-none d-lg-block">
-                            <span class="nav-link user-welcome" aria-label="Usuário logado: Olá, {{ current_user.nome }}">
-                                <i class="fas fa-user-circle me-1"></i> Olá, **{{ current_user.nome }}**
+                        {# Mensagem de Boas-vindas #}
+                        <li class="nav-item me-2">
+                            {# Assumindo que current_user tem um atributo 'nome' #}
+                            <span class="nav-link user-welcome" style="pointer-events: none;">
+                                Olá, {{ current_user.nome.split(' ')[0] }}! 
                             </span>
                         </li>
                         
-                        {# Link para Meus Agendamentos #}
+                        {# BOTÃO DE SAIR (LOGOUT) - Solução para o problema #}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('services.my_appointments') }}" aria-label="Ver meus agendamentos">
-                                <i class="fas fa-calendar-check me-2"></i> Meus Agendamentos
+                            <a href="{{ url_for('auth.logout') }}" class="btn btn-logout">
+                                <i class="fas fa-sign-out-alt me-2"></i> Sair
                             </a>
                         </li>
-                        
-                        {# --- INÍCIO: DROPDOWN DE ADMINISTRAÇÃO --- #}
-                        {% if current_user.is_admin %}
-                        <li class="nav-item dropdown me-2">
-                            <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu de Administração">
-                                <i class="fas fa-tools me-2"></i> Administração
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="adminDropdown">
-                                <li><a class="dropdown-item" href="{{ url_for('services.manage_appointments') }}">
-                                    <i class="fas fa-calendar-alt me-2"></i> Gerenciar Agendamentos
-                                </a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('services.list_services') }}">
-                                    <i class="fas fa-tags me-2"></i> Gerenciar Serviços
-                                </a></li>
-                                
-                                <li><hr class="dropdown-divider"></li>
-                                
-                                {# Relatório de Faturamento em Destaque #}
-                                <li><a class="dropdown-item fw-bold" style="color: var(--primary-teal);" href="{{ url_for('services.billing_report') }}">
-                                    <i class="fas fa-chart-line me-2"></i> Relatório de Faturamento
-                                </a></li>
 
-                                <li><hr class="dropdown-divider"></li>
-                                
-                                <li><a class="dropdown-item fw-bold" style="color: var(--accent-pink);" href="{{ url_for('services.admin_dashboard') }}">
-                                    <i class="fas fa-shield-alt me-2"></i> Admin Dashboard
-                                </a></li>
-                            </ul>
-                        </li>
-                        {% endif %}
-                        {# --- FIM: DROPDOWN DE ADMINISTRAÇÃO --- #}
-
-                        
-                        <li class="nav-item">
-                            <a class="btn btn-sm ms-lg-3 btn-logout" href="{{ url_for('auth.logout') }}" aria-label="Sair da conta">
-                                <i class="fas fa-sign-out-alt me-1"></i> Sair
-                            </a> 
-                        </li>
-                        
                     {% else %}
-                        {# Se não autenticado #}
+                        {# Opções para Usuário NÃO Logado (Visitante) #}
                         <li class="nav-item">
-                            <a class="nav-link me-2" href="{{ url_for('auth.register') }}" aria-label="Criar nova conta">
+                            <a class="nav-link" href="{{ url_for('auth.login') }}">
+                                <i class="fas fa-sign-in-alt me-2"></i> Entrar
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('auth.register') }}">
                                 <i class="fas fa-user-plus me-2"></i> Registrar
                             </a>
                         </li>
-                        <li class="nav-item">
-                            {# CTA principal em destaque #}
-                            <a class="btn btn-sm ms-lg-3 btn-cta-primary" href="{{ url_for('auth.login') }}" aria-label="Fazer login ou agendar agora">
-                                <i class="fas fa-sign-in-alt me-1"></i> Login / Agendar Agora
-                            </a>
-                        </li>
                     {% endif %}
+                    {# Fim da Lógica de Login/Logout #}
+                    
                 </ul>
             </div>
         </div>

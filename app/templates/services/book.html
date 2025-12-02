@@ -2,44 +2,15 @@
 
 {% block content %}
 
-{# ====================================================== #}
-{# 🎯 BLOCO DE DEBUG 🎯 #}
-{# ESTE BLOCO VAI MOSTRAR O CONTEÚDO DA VARIÁVEL SERVICES #}
-{# ====================================================== #}
-<div class="alert alert-warning mx-auto mt-3" style="max-width: 600px;">
-    <h4 class="alert-heading">🔍 DEBUG (Verificação de Serviços)</h4>
-    <p class="mb-1">Variável **'services'** recebida pelo template:</p>
-    {% if services is defined %}
-        <p class="mb-1 fw-bold">Status: Variável definida e acessível.</p>
-        {% if services | length > 0 %}
-            <p class="mb-1">Total de serviços encontrados: <strong>{{ services | length }}</strong></p>
-            <ul>
-            {% for service in services %}
-                <li>ID: {{ service.id }} | Nome: {{ service.nome }} | Preço: {{ service.preco }}</li>
-            {% endfor %}
-            </ul>
-        {% else %}
-            <p class="mb-0 text-danger fw-bold">⚠️ ATENÇÃO: A lista 'services' está vazia! (Verifique o BD/Filtro `is_active=True`).</p>
-        {% endif %}
-    {% else %}
-        <p class="mb-0 text-danger fw-bold">❌ ERRO GRAVE: A variável 'services' NÃO foi passada para o template na rota Flask!</p>
-    {% endif %}
-</div>
-<hr>
-{# ====================================================== #}
-{# FIM DO BLOCO DE DEBUG #}
-{# ====================================================== #}
-
-
 <style>
     /* Variáveis CSS para o Design FlyingDonut */
-    /* Importante para que as cores (var(--dark-navy), etc.) funcionem */
     :root {
         --dark-navy: #2F3640;
         --primary-teal: #1ABC9C;
         --accent-pink: #FF4757;
         --light-gray: #e9ecef;
         --text-on-dark: white;
+        --text-default: #5a6270; /* Cor para texto padrão */
     }
 
     /* Estilo Específico para o Formulário */
@@ -161,7 +132,7 @@
                         <label for="service_id" class="form-label form-label-step">1. Selecione o Serviço</label>
                         <select class="form-select form-select-lg" id="service_id" name="service_id" required>
                             <option value="" disabled selected>-- Escolha um serviço --</option>
-                            {# USANDO round(2) PARA EVITAR ERROS DE FORMATAÇÃO NO JINJA2 #}
+                            {# USANDO round(2) PARA GARANTIR FORMATO CORRETO #}
                             {% for service in services %} 
                                 <option value="{{ service.id }}" data-duration="{{ service.duracao_minutos }}">
                                     {{ service.nome }} ({{ service.duracao_minutos }} min) - R$ {{ service.preco | round(2) }}
@@ -190,7 +161,7 @@
                         </div>
                         
                         {# Botão para Busca Manual #}
-                        <button type="button" class="btn btn-sm mt-3 w-100" id="show-slots-button">
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-3 w-100" id="show-slots-button">
                             <i class="fas fa-search me-1"></i> Buscar Horários Disponíveis
                         </button>
                     </div>
@@ -208,13 +179,6 @@
 </div>
 
 <script>
-    // ... Seu script JavaScript permanece inalterado para esta fase de debug.
-    // O JS só depende que o elemento #service_id exista.
-    // ... [Seu script JS completo aqui]
-    // ******************************************************
-    // LÓGICA JAVASCRIPT (MANTIDA INTACTA PARA FUNCIONALIDADE)
-    // ******************************************************
-    
     // Obtém referências aos elementos do DOM
     const serviceSelect = document.getElementById('service_id');
     const dateInput = document.getElementById('date');
@@ -222,7 +186,7 @@
     const slotsMessage = document.getElementById('slots-message');
     const selectedTimeInput = document.getElementById('selected_time');
     const submitButton = document.getElementById('submit-button');
-    const showSlotsButton = document.getElementById('show-slots-button'); // Novo elemento
+    const showSlotsButton = document.getElementById('show-slots-button');
 
     // Função para mostrar mensagens no contêiner de slots
     function updateSlotsMessage(text, isError = false) {
@@ -238,13 +202,12 @@
         const serviceId = serviceSelect.value;
         const date = dateInput.value;
         
-        // Limpa a seleção de horário anterior
+        // Limpa a seleção de horário anterior e desabilita o botão
         selectedTimeInput.value = '';
         submitButton.disabled = true;
 
         if (!serviceId) {
             updateSlotsMessage('Por favor, selecione um Serviço.');
-            // Se for um clique manual, alertar de forma mais enfática
             if (isManualClick) alert('Atenção: Você deve selecionar o Serviço.');
             return false;
         }
@@ -257,7 +220,7 @@
 
         updateSlotsMessage('Buscando horários...', false); // Mensagem de carregamento
 
-        // Faz a chamada AJAX (Fetch API) para o novo endpoint
+        // Faz a chamada AJAX (Fetch API) para o endpoint
         fetch(`/services/api/available_slots?service_id=${serviceId}&date=${date}`)
             .then(response => response.json())
             .then(data => {
@@ -308,22 +271,22 @@
             return true;
     }
 
-    // 1. Adiciona o listener para que a busca seja feita automaticamente (padrão)
+    // 1. Listeners para mudanças automáticas
     serviceSelect.addEventListener('change', () => fetchAvailableSlots(false));
     dateInput.addEventListener('change', () => fetchAvailableSlots(false));
 
-    // 2. Listener para o novo BOTÃO DE AÇÃO MANUAL
+    // 2. Listener para o BOTÃO DE AÇÃO MANUAL
     showSlotsButton.addEventListener('click', () => {
-        // Passamos 'true' para indicar que é um clique manual e forçar o alerta em caso de erro
         fetchAvailableSlots(true);
     });
 
-    // Inicializa a busca (Garante que a data mínima está correta)
+    // Inicializa a data mínima e busca slots se o formulário já tiver valores
     document.addEventListener('DOMContentLoaded', () => {
         const today = new Date().toISOString().split('T')[0];
+        // Define a data mínima para hoje
         dateInput.setAttribute('min', today);
         
-        // Se ambos estiverem preenchidos (ex: após erro de submissão), busca slots automaticamente
+        // Se ambos estiverem preenchidos (ex: após erro de submissão), busca slots
         if (serviceSelect.value && dateInput.value) {
             fetchAvailableSlots(false);
         }
